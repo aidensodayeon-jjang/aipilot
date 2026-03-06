@@ -101,8 +101,27 @@ const base = {
 
 // ----------------------------------------------------------------------
 
-export function palette() {
-  return {
+export function palette(mode = 'light') {
+  const light = {
+    ...base,
+    mode: 'light',
+    text: {
+      primary: grey[800],
+      secondary: grey[600],
+      disabled: grey[500],
+    },
+    background: {
+      paper: '#FFFFFF',
+      default: '#FFFFFF',
+      neutral: grey[200],
+    },
+    action: {
+      ...base.action,
+      active: grey[600],
+    },
+  };
+
+  const dark = {
     ...base,
     mode: 'dark',
     text: {
@@ -111,8 +130,8 @@ export function palette() {
       disabled: grey[600],
     },
     background: {
-      paper: '#1E1E1E', // Slightly lighter dark for cards
-      default: '#121212', // Deep dark background
+      paper: '#1E1E1E',
+      default: '#121212',
       neutral: grey[800],
     },
     action: {
@@ -120,4 +139,6 @@ export function palette() {
       active: grey[500],
     },
   };
+
+  return mode === 'light' ? light : dark;
 }

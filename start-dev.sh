@@ -1,38 +1,59 @@
 #!/bin/bash
 
-echo "백엔드와 프론트엔드 개발 서버를 시작합니다..."
+# 색상 정의
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Function to kill process on a given port
-kill_port() {
-    PORT=$1
-    PID=$(lsof -t -i :$PORT)
-    if [ -n "$PID" ]; then
-        echo "Killing process on port $PORT (PID: $PID)"
-        kill -9 $PID
-    fi
+echo -e "${BLUE}=======================================${NC}"
+echo -e "${BLUE}   EduPilot 통합 개발 환경 시작      ${NC}"
+echo -e "${BLUE}=======================================${NC}"
+
+# 백엔드 실행 함수
+start_backend() {
+    echo -e "${GREEN}[Backend]${NC} 가상환경 활성화 및 서버 실행 중..."
+    cd edupilot-backend
+    source .venv/bin/activate
+    # requirements 설치는 선택 사항 (속도를 위해 제외하거나 필요시 추가)
+    # pip install -r requirements.txt
+    python manage.py runserver 0.0.0.0:8000 &
+    BACKEND_PID=$!
+    cd ..
 }
 
-echo "기존 서버를 종료합니다..."
-kill_port 8000 # Django backend default port
-kill_port 3000 # Vite frontend default port
-sleep 2 # Give some time for ports to release
+# 프론트엔드 실행 함수
+start_frontend() {
+    echo -e "${GREEN}[Frontend]${NC} 의존성 확인 및 서버 실행 중..."
+    cd edupilot-frontend
+    # yarn이 문제가 있을 경우 npm 사용
+    if command -v yarn &> /dev/null && [ "$(yarn -v | grep -c "Segmentation fault")" -eq 0 ]; then
+        yarn dev &
+    else
+        npm run dev &
+    fi
+    FRONTEND_PID=$!
+    cd ..
+}
 
-echo "2개의 새로운 터미널 탭이 열립니다."
+# 종료 처리
+cleanup() {
+    echo -e "\n${BLUE}서버를 종료합니다...${NC}"
+    kill $BACKEND_PID $FRONTEND_PID
+    exit
+}
 
-# 현재 스크립트가 실행되는 디렉토리의 절대 경로를 가져옵니다.
-BASE_DIR=$(pwd)
+trap cleanup SIGINT
 
-# 백엔드 실행 명령어
-BACKEND_CMD="cd '${BASE_DIR}/edupilot-backend' && source .venv/bin/activate && echo '--- BACKEND SERVER ---' && python manage.py runserver"
+# 실행
+start_backend
+sleep 2 # 백엔드 안정화 대기
+start_frontend
 
-# 프론트엔드 실행 명령어
-FRONTEND_CMD="cd '${BASE_DIR}/edupilot-frontend' && echo '--- FRONTEND SERVER ---' && yarn dev"
+echo -e "${BLUE}=======================================${NC}"
+echo -e "${GREEN}백엔드: http://localhost:8000${NC}"
+echo -e "${GREEN}프론트엔드: http://localhost:3030${NC}"
+echo -e "${BLUE}종료하려면 Ctrl+C를 누르세요.${NC}"
+echo -e "${BLUE}=======================================${NC}"
 
-# 새 터미널 탭에서 백엔드 실행
-osascript -e "tell application \"Terminal\" to do script \"${BACKEND_CMD}\""
-
-# 새 터미널 탭에서 프론트엔드 실행
-osascript -e "tell application \"Terminal\" to do script \"${FRONTEND_CMD}\""
-
-echo "스크립트 실행이 완료되었습니다. 새로 열린 터미널 탭을 확인해주세요."
-
+# 프로세스 유지
+wait
