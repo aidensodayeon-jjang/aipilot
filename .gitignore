@@ -1,0 +1,56 @@
+# OS files
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Node.js
+node_modules/
+dist/
+build/
+*.log
+package-lock.json
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+*.log
+db.sqlite3
+
+# Django-specific
+media/
+static/
+edupilot-backend/media/
+edupilot-backend/static/
+edupilot-backend/logs/
+
+# Sensitive data
+secrets.json
+edupilot-backend/secrets.json
+token.pickle
+edupilot-backend/token.pickle
+
+# Data and Backups
+아카이브/
+*.sql
+*.csv
+*.json
+!package.json
+!composer.json
+!manifest.json
+
+# Exclude large data files in backend
+edupilot-backend/CourseMaster.csv
+edupilot-backend/StudentMaster.csv
+edupilot-backend/attend.json
+edupilot-backend/history.json
+edupilot-backend/db*.json
+edupilot-backend/attend_and_history.json
+edupilot-backend/coursemaster.json
+edupilot-backend/studentmaster.json
