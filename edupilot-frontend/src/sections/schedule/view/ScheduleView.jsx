@@ -149,13 +149,13 @@ export default function ScheduleView() {
         />
       </Card>
 
-      <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #f1f5f9', boxShadow: 'none', maxHeight: 700 }}>
+      <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #f1f5f9', boxShadow: 'none', maxHeight: 800 }}>
         <Table stickyHeader sx={{ minWidth: 1200 }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ bgcolor: '#f8fafc', fontWeight: 700, textAlign: 'center', width: 100 }}>시간</TableCell>
+              <TableCell sx={{ bgcolor: '#f8fafc', fontWeight: 800, textAlign: 'center', width: 120, fontSize: '1rem' }}>시간</TableCell>
               {ROOM_IDS.map((room) => (
-                <TableCell key={room} sx={{ bgcolor: '#f8fafc', fontWeight: 700, textAlign: 'center', minWidth: 200 }}>
+                <TableCell key={room} sx={{ bgcolor: '#f8fafc', fontWeight: 800, textAlign: 'center', minWidth: 220, fontSize: '1rem' }}>
                   {room} 강의실
                 </TableCell>
               ))}
@@ -165,35 +165,35 @@ export default function ScheduleView() {
             {currentDaySlots.length > 0 ? (
               currentDaySlots.map((slot) => (
                 <TableRow key={slot.time}>
-                  <TableCell sx={{ fontWeight: 800, textAlign: 'center', borderRight: '1px solid #f1f5f9', bgcolor: '#f8fafc' }}>
+                  <TableCell sx={{ fontWeight: 900, textAlign: 'center', borderRight: '1px solid #f1f5f9', bgcolor: '#f8fafc', fontSize: '1.1rem' }}>
                     {slot.time}
                   </TableCell>
                   {ROOM_IDS.map((room) => {
                     const classInfo = slot.rooms[room];
                     return (
-                      <TableCell key={room} sx={{ p: 0.8, minHeight: 160, verticalAlign: 'top', borderRight: '1px solid #f1f5f9' }}>
+                      <TableCell key={room} sx={{ p: 1.2, minHeight: 180, verticalAlign: 'top', borderRight: '1px solid #f1f5f9' }}>
                         {classInfo && (
                           <Box
                             sx={{
-                              p: 1.2,
+                              p: 2,
                               height: '100%',
-                              minHeight: 140,
-                              borderRadius: 1.5,
+                              minHeight: 160,
+                              borderRadius: 2,
                               bgcolor: getSubjectColor(classInfo.className),
-                              borderLeft: '4px solid #6366f1',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                              borderLeft: '5px solid #6366f1',
+                              boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
                               display: 'flex',
                               flexDirection: 'column'
                             }}
                           >
-                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b', fontSize: '0.85rem', lineHeight: 1.2, mb: 0.5 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#1e293b', fontSize: '1.05rem', lineHeight: 1.3, mb: 0.8 }}>
                               {classInfo.className}
                             </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1, fontSize: '0.7rem' }}>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 1.5, fontSize: '0.85rem' }}>
                               {classInfo.instructor} 선생님
                             </Typography>
                             
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3 }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.6 }}>
                               {classInfo.students.slice(0, 8).map((student) => {
                                 const log = dailyLogs.find(l => l.student_id === student.id && l.class_id === classInfo.classId);
                                 const status = log?.status || 'none';
@@ -203,17 +203,18 @@ export default function ScheduleView() {
                                     key={student.id}
                                     onClick={() => handleStudentClick(student, classInfo)}
                                     sx={{
-                                      px: 0.6,
-                                      py: 0.2,
-                                      borderRadius: 0.5,
-                                      fontSize: '0.72rem',
-                                      fontWeight: 600,
+                                      px: 1,
+                                      py: 0.4,
+                                      borderRadius: 0.8,
+                                      fontSize: '0.875rem',
+                                      fontWeight: 700,
                                       cursor: 'pointer',
-                                      bgcolor: status === 'present' ? alpha('#10b981', 0.1) : alpha('#f1f5f9', 0.5),
+                                      bgcolor: status === 'present' ? alpha('#10b981', 0.15) : alpha('#f1f5f9', 0.8),
                                       color: getStatusColor(status),
                                       border: '1px solid',
-                                      borderColor: status === 'present' ? alpha('#10b981', 0.2) : 'transparent',
-                                      '&:hover': { bgcolor: alpha('#6366f1', 0.05) }
+                                      borderColor: status === 'present' ? alpha('#10b981', 0.3) : alpha('#e2e8f0', 0.5),
+                                      transition: '0.2s',
+                                      '&:hover': { bgcolor: alpha('#6366f1', 0.1), transform: 'translateY(-1px)' }
                                     }}
                                   >
                                     {student.name}
@@ -221,7 +222,7 @@ export default function ScheduleView() {
                                 );
                               })}
                               {classInfo.students.length > 8 && (
-                                <Box sx={{ px: 0.5, py: 0.2, fontSize: '0.7rem', color: 'text.disabled', fontWeight: 700 }}>
+                                <Box sx={{ px: 0.8, py: 0.4, fontSize: '0.8rem', color: 'text.disabled', fontWeight: 800 }}>
                                   +{classInfo.students.length - 8}
                                 </Box>
                               )}
