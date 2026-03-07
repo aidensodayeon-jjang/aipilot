@@ -77,18 +77,11 @@ export default function Nav({ openNav, onCloseNav }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  const renderMenu = (
-    <Stack component="nav" spacing={0.5} sx={{ px: 2 }}>
-      {navConfig.map((item) => (
-        <NavItem key={item.title} item={item} depth={0} />
-      ))}
-    </Stack>
-  );
-
   const renderContent = (
     <Scrollbar
       sx={{
         height: 1,
+        bgcolor: '#ffffff',
         '& .simplebar-content': {
           height: 1,
           display: 'flex',
@@ -96,8 +89,16 @@ export default function Nav({ openNav, onCloseNav }) {
         },
       }}
     >
-      <Logo sx={{ mt: 3, ml: 4 }} />
-      {renderMenu}
+      <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
+        <Logo sx={{ width: 140 }} />
+      </Box>
+
+      <Stack component="nav" spacing={0.5} sx={{ px: 2 }}>
+        {navConfig.map((item) => (
+          <NavItem key={item.title} item={item} depth={0} />
+        ))}
+      </Stack>
+
       <Box sx={{ flexGrow: 1 }} />
     </Scrollbar>
   );
@@ -115,7 +116,8 @@ export default function Nav({ openNav, onCloseNav }) {
             height: 1,
             position: 'fixed',
             width: NAV.WIDTH,
-            borderRight: (theme) => `dashed 1px ${theme.palette.divider}`,
+            borderRight: '1px solid #f1f5f9',
+            boxShadow: '4px 0 24px 0 rgba(0, 0, 0, 0.02)',
           }}
         >
           {renderContent}
@@ -127,6 +129,8 @@ export default function Nav({ openNav, onCloseNav }) {
           PaperProps={{
             sx: {
               width: NAV.WIDTH,
+              border: 'none',
+              bgcolor: '#ffffff',
             },
           }}
         >
@@ -148,7 +152,8 @@ function NavItem({ item, depth }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const active = item.path === pathname;
+  // 현재 경로가 자식 경로 중 하나인 경우 메뉴를 열어둠
+  const active = item.path === pathname || (item.children && item.children.some(child => child.path === pathname));
   const hasChildren = item.children && item.children.length > 0;
 
   const handleClick = () => {
@@ -157,29 +162,59 @@ function NavItem({ item, depth }) {
     }
   };
 
+  const activeStyle = {
+    color: '#6366f1',
+    fontWeight: 700,
+    bgcolor: alpha('#6366f1', 0.08),
+    '&:before': {
+      content: '""',
+      position: 'absolute',
+      left: 0,
+      width: 4,
+      height: 24,
+      bgcolor: '#6366f1',
+      borderRadius: '0 4px 4px 0',
+    },
+    '&:hover': {
+      bgcolor: alpha('#6366f1', 0.12),
+    },
+  };
+
   if (hasChildren) {
     return (
       <>
         <ListItemButton
           onClick={handleClick}
           sx={{
-            minHeight: 44,
-            borderRadius: 0.75,
-            typography: 'body2',
-            color: 'text.secondary',
-            textTransform: 'capitalize',
-            fontWeight: 'fontWeightMedium',
-            pl: 2,
+            minHeight: 52, // 높이 증가
+            borderRadius: 1.5,
+            color: active ? '#1e293b' : '#64748b',
+            fontWeight: active ? 700 : 500,
+            mb: 0.8,
+            transition: 'all 0.2s',
+            pl: 2.5, // 패딩 증가
+            ...(active && { bgcolor: alpha('#6366f1', 0.04) }),
+            '&:hover': {
+              bgcolor: '#f8fafc',
+              color: '#1e293b',
+            },
           }}
         >
-          <Box component="span" sx={{ width: 24, height: 24, mr: 2 }}>
+          <Box component="span" sx={{ width: 24, height: 24, mr: 2, color: active ? '#6366f1' : 'inherit' }}>
             {item.icon}
           </Box>
-          <ListItemText primary={item.title} />
-          {open ? <ExpandLess /> : <ExpandMore />}
+          <ListItemText 
+            primary={item.title} 
+            primaryTypographyProps={{ 
+              variant: 'body1', // 글자 크기 증가
+              fontWeight: 'inherit',
+              fontSize: 15.5 
+            }} 
+          />
+          {open ? <ExpandLess sx={{ width: 20 }} /> : <ExpandMore sx={{ width: 20 }} />}
         </ListItemButton>
         <Collapse in={open} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding>
+          <List component="div" disablePadding sx={{ mb: 1 }}>
             {item.children.map((child) => (
               <NavItem key={child.title} item={child} depth={depth + 1} />
             ))}
@@ -189,33 +224,45 @@ function NavItem({ item, depth }) {
     );
   }
 
+  const isSubItem = depth > 0;
+  const currentActive = pathname === item.path;
+
   return (
     <ListItemButton
       component={RouterLink}
       href={item.path}
       sx={{
-        minHeight: 44,
-        borderRadius: 0.75,
-        typography: 'body2',
-        color: 'text.secondary',
-        textTransform: 'capitalize',
-        fontWeight: 'fontWeightMedium',
-        ...(active && {
-          color: 'primary.main',
-          fontWeight: 'fontWeightSemiBold',
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+        minHeight: isSubItem ? 48 : 52, // 서브메뉴와 메인메뉴 높이 최적화
+        borderRadius: 1.5,
+        color: currentActive ? '#6366f1' : '#64748b',
+        fontWeight: currentActive ? 700 : 500,
+        mb: 0.8,
+        transition: 'all 0.2s',
+        position: 'relative',
+        pl: isSubItem ? 6.5 : 2.5,
+        ...(currentActive && activeStyle),
+        ...(!currentActive && {
           '&:hover': {
-            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16),
+            bgcolor: '#f8fafc',
+            color: '#1e293b',
           },
         }),
-        pl: 2 + (depth * 2), 
       }}
     >
-      <Box component="span" sx={{ width: 24, height: 24, mr: 2 }}>
-        {item.icon}
-      </Box>
+      {!isSubItem && (
+        <Box component="span" sx={{ width: 24, height: 24, mr: 2, color: currentActive ? '#6366f1' : 'inherit' }}>
+          {item.icon}
+        </Box>
+      )}
 
-      <Box component="span">{item.title} </Box>
+      <ListItemText 
+        primary={item.title} 
+        primaryTypographyProps={{ 
+          variant: 'body1',
+          fontWeight: 'inherit',
+          fontSize: isSubItem ? 14 : 15.5 // 글자 크기 확대
+        }} 
+      />
     </ListItemButton>
   );
 }

@@ -38,30 +38,16 @@ const navConfig = [
     icon: icon('ic_class'),
   },
   {
-    title: '수납 관리',
-    path: '/payment',
-    icon: icon('ic_pay'),
-  },
-  {
-    title: '프러덕트',
-    path: '/products',
-    icon: icon('ic_disabled'),
-  },
-  {
-    title: '블로그',
-    path: '/blog',
-    icon: icon('ic_blog'),
-  },
-  {
     title: '업무 관리',
     path: '/login',
     icon: icon('ic_lock'),
   },
   {
-    title: 'Not found',
-    path: '/404',
-    icon: icon('ic_disabled'),
+    title: '시스템 설정',
+    path: '/settings',
+    icon: icon('ic_setting'),
   },
-];
+  ];
+
 
 export default navConfig;

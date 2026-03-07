@@ -3,8 +3,11 @@ import { forwardRef } from 'react';
 
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 
 import { RouterLink } from 'src/routes/components';
+import Iconify from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
@@ -12,21 +15,49 @@ const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
   const logo = (
     <Box
       ref={ref}
-      component="img"
-      src="/assets/images/edu.jpeg"
+      component="div"
       sx={{
-        width: 140,
-        height: 'auto',
         display: 'inline-flex',
+        alignItems: 'center',
+        gap: 1.5,
         cursor: 'pointer',
-        borderRadius: 1.5, // 둥근 테두리로 부드럽게
-        boxShadow: (theme) => theme.customShadows.z1, // 은은한 그림자
-        p: 0.5, // 이미지와 테두리 사이 여백
-        bgcolor: 'background.paper', // 배경색을 테마 배경색으로
         ...sx,
       }}
       {...other}
-    />
+    >
+      <Box
+        sx={{
+          width: 36,
+          height: 36,
+          display: 'flex',
+          borderRadius: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: '#6366f1',
+          color: 'white',
+          boxShadow: (theme) => `0 4px 12px 0 ${alpha('#6366f1', 0.24)}`,
+        }}
+      >
+        <Iconify icon="solar:chart-square-bold-duotone" width={24} />
+      </Box>
+
+      <Typography
+        variant="h6"
+        sx={{
+          fontWeight: 800,
+          display: 'flex',
+          letterSpacing: 0.5,
+          fontFamily: (theme) => theme.typography.fontFamily,
+        }}
+      >
+        <Box component="span" sx={{ color: '#1e293b', mr: 0.5 }}>
+          MOKDONG
+        </Box>
+        <Box component="span" sx={{ color: '#6366f1' }}>
+          EDUPILOT
+        </Box>
+      </Typography>
+    </Box>
   );
 
   if (disabledLink) {

@@ -32,9 +32,13 @@ export default function AppView() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 새 대시보드용 데이터 로드
-    const data = processData();
-    setStudentData(data);
+    // 새 대시보드용 데이터 로드 (비동기 처리)
+    const loadDashboardData = async () => {
+      const data = await processData();
+      setStudentData(data);
+    };
+
+    loadDashboardData();
 
     // 기존 대시보드용 데이터 로드
     fetchWithToken(

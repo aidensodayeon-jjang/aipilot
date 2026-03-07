@@ -9,6 +9,7 @@ export const StudentListPage = lazy(() => import('src/pages/student-list'));
 export const AttendPage = lazy(() => import('src/pages/attend'));
 export const BlogPage = lazy(() => import('src/pages/blog'));
 export const UserPage = lazy(() => import('src/pages/user'));
+export const SettingsPage = lazy(() => import('src/pages/settings'));
 export const LoginPage = lazy(() => import('src/pages/login'));
 export const MessagePage = lazy(() => import('src/pages/message'));
 export const ProductsPage = lazy(() => import('src/pages/products'));
@@ -29,6 +30,7 @@ export default function Router() {
       children: [
         { element: <IndexPage />, index: true },
         { path: 'user', element: <UserPage /> },
+        { path: 'settings', element: <SettingsPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },
         { path: 'students/:status', element: <StudentListPage /> },
