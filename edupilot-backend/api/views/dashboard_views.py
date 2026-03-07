@@ -15,7 +15,9 @@ class DashboardView(APIView):
     def get(self, request):
         results = {
             "total_consulting_count": self.get_student_count(status='상담중'),
-            "total_user_count": self.get_student_count(status='재원생'),
+            "total_user_count": StudentMaster.objects.exclude(status='종료').count(),
+            "total_paid_count": StudentMaster.objects.filter(status='결제완료').count(),
+            "total_unpaid_count": StudentMaster.objects.filter(status='미결제').count(),
             "total_reservation_count": self.get_attend_count(status_prefix='예약'),
         }
         return Response(results)

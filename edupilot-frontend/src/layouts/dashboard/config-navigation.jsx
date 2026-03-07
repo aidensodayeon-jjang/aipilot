@@ -33,7 +33,7 @@ const navConfig = [
     icon: icon('ic_messge'),
   },
   {
-    title: '수업 관리',
+    title: '시간표 관리',
     path: '/schedule',
     icon: icon('ic_class'),
   },
@@ -47,7 +47,6 @@ const navConfig = [
     path: '/settings',
     icon: icon('ic_setting'),
   },
-  ];
-
+];
 
 export default navConfig;

@@ -6,6 +6,7 @@ import RegisterPage from '../pages/register';
 
 export const IndexPage = lazy(() => import('src/pages/app'));
 export const StudentListPage = lazy(() => import('src/pages/student-list'));
+export const SchedulePage = lazy(() => import('src/pages/schedule'));
 export const AttendPage = lazy(() => import('src/pages/attend'));
 export const BlogPage = lazy(() => import('src/pages/blog'));
 export const UserPage = lazy(() => import('src/pages/user'));
@@ -30,6 +31,7 @@ export default function Router() {
       children: [
         { element: <IndexPage />, index: true },
         { path: 'user', element: <UserPage /> },
+        { path: 'schedule', element: <SchedulePage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: 'products', element: <ProductsPage /> },
         { path: 'blog', element: <BlogPage /> },

@@ -39,13 +39,20 @@ export default function Nav({ openNav, onCloseNav }) {
   const [navConfig, setNavConfig] = useState(navConfigData);
 
   useEffect(() => {
-    fetchWithToken('/api/students/statuses/', {}, navigate)
-        .then(response => response.json())
-        .then(statuses => {
+    const fetchStatuses = async () => {
+        try {
+            const response = await fetchWithToken('/api/students/statuses/', {}, navigate);
+            const statuses = await response.json();
+            
             const studentStatusSubMenu = statuses.map(status => ({
                 title: status,
                 path: `/students/${status}`,
             }));
+
+            studentStatusSubMenu.unshift({
+                title: '⚠️ 미처리',
+                path: '/students/unprocessed',
+            });
 
             const newNavConfig = navConfigData.filter(item => item.title !== '상담 관리');
             const userManagementIndex = newNavConfig.findIndex(item => item.title === '원생 관리');
@@ -64,10 +71,14 @@ export default function Nav({ openNav, onCloseNav }) {
             }
 
             setNavConfig(newNavConfig);
-        })
-        .catch(error => console.error('Failed to fetch student statuses:', error));
+        } catch (error) {
+            console.error('Failed to fetch student statuses:', error);
+        }
+    };
+
+    fetchStatuses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+  }, []);
 
 
   useEffect(() => {
@@ -230,7 +241,7 @@ function NavItem({ item, depth }) {
   return (
     <ListItemButton
       component={RouterLink}
-      href={item.path}
+      to={item.path}
       sx={{
         minHeight: isSubItem ? 48 : 52, // 서브메뉴와 메인메뉴 높이 최적화
         borderRadius: 1.5,

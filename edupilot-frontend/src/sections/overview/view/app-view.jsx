@@ -28,6 +28,8 @@ export default function AppView() {
   const [totalConsultingCount, setTotalConsultingCount] = useState(0);
   const [totalReservationCount, setTotalReservationCount] = useState(0);
   const [TotalUserCount, setTotalUserCount] = useState(0);
+  const [totalPaidCount, setTotalPaidCount] = useState(0);
+  const [totalUnpaidCount, setTotalUnpaidCount] = useState(0);
 
   const navigate = useNavigate();
 
@@ -56,6 +58,8 @@ export default function AppView() {
         setTotalConsultingCount(result.total_consulting_count || 0);
         setTotalReservationCount(result.total_reservation_count || 0);
         setTotalUserCount(result.total_user_count || 0);
+        setTotalPaidCount(result.total_paid_count || 0);
+        setTotalUnpaidCount(result.total_unpaid_count || 0);
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
@@ -69,7 +73,7 @@ export default function AppView() {
   return (
     <Container maxWidth="xl">
       <Box sx={{ mb: 5, display: 'flex', flexDirection: 'column', gap: 3 }}>
-        {/* New Header Style from 1.png */}
+        {/* Dashboard Header Style */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
           <Box
             sx={{
@@ -93,7 +97,7 @@ export default function AppView() {
           </Box>
         </Box>
 
-        {/* Tab Selection */}
+        {/* Tab Selection Section */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Tabs value={currentTab} onChange={handleChangeTab} sx={{ px: 1 }}>
             <Tab 
@@ -122,6 +126,8 @@ export default function AppView() {
             consultingCount: totalConsultingCount,
             reservationCount: totalReservationCount,
             userCount: TotalUserCount,
+            paidCount: totalPaidCount,
+            unpaidCount: totalUnpaidCount,
           }}
         />
       ) : (

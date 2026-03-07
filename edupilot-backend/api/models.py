@@ -111,6 +111,19 @@ class SemesterStatus(models.Model):
         return f"현재 학기: {self.current_semester}"
 
 
+class AcademicSemester(models.Model):
+    name = models.CharField(max_length=100)  # 예: 2026년 3월 봄학기
+    start_date = models.DateField()
+    end_date = models.DateField()
+    vacation_start = models.DateField(null=True, blank=True)
+    vacation_end = models.DateField(null=True, blank=True)
+    is_current = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 # models.py
 
 class CourseMain(models.Model):
@@ -210,3 +223,57 @@ class TeacherFeedback(models.Model):
 
     def __str__(self):
         return f"{self.student.name} ({self.semester} - {self.week}주차) - {self.teacher}"
+
+
+# --- Timetable & Attendance Integration ---
+
+class CourseClass(models.Model):
+    DAY_CHOICES = (
+        ('Monday', '월요일'),
+        ('Tuesday', '화요일'),
+        ('Wednesday', '수요일'),
+        ('Thursday', '목요일'),
+        ('Friday', '금요일'),
+        ('Saturday', '토요일'),
+        ('Sunday', '일요일'),
+    )
+
+    class_code = models.CharField(max_length=50, unique=True)  # 길이를 50으로 증가
+    subject_name = models.CharField(max_length=100)
+    day_of_week = models.CharField(max_length=20, choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
+    classroom = models.CharField(max_length=50, null=True, blank=True)
+    teacher_name = models.CharField(max_length=50, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"[{self.class_code}] {self.subject_name} ({self.day_of_week})"
+
+
+class Enrollment(models.Model):
+    student = models.ForeignKey(StudentMaster, on_delete=models.CASCADE, related_name='enrollments')
+    course_class = models.ForeignKey(CourseClass, on_delete=models.CASCADE, related_name='enrolled_students')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('student', 'course_class')
+
+    def __str__(self):
+        return f"{self.student.name} - {self.course_class.subject_name}"
+
+
+class AttendanceLog(models.Model):
+    METHOD_CHOICES = (
+        ('Kiosk', '키오스크'),
+        ('Manual', '수동'),
+    )
+
+    student = models.ForeignKey(StudentMaster, on_delete=models.SET_NULL, null=True, related_name='attendance_logs')
+    course_class = models.ForeignKey(CourseClass, on_delete=models.SET_NULL, null=True, related_name='attendance_logs')
+    check_in_time = models.DateTimeField(auto_now_add=True)
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='Kiosk')
+    notification_sent = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.student.name if self.student else 'Unknown'} - {self.check_in_time}"

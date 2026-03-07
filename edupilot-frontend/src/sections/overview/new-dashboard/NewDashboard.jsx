@@ -23,7 +23,11 @@ export default function NewDashboard({ data, apiStats }) {
       .reduce((acc, curr) => acc + curr.paymentAmount, 0);
     const newStudents = data.filter((d) => d.isNew).length;
 
-    return { totalStudents, totalRevenue, unpaidAmount, newStudents };
+    // 결제 상태별 인원수 계산 (CSV 기준)
+    const paidCount = data.filter((d) => d.paymentStatus === '결제완료' || d.paymentStatus === 'PASS').length;
+    const unpaidCount = data.filter((d) => d.paymentStatus === '미결제').length;
+
+    return { totalStudents, totalRevenue, unpaidAmount, newStudents, paidCount, unpaidCount };
   }, [data]);
 
   const paymentStatusData = useMemo(() => {
@@ -79,29 +83,32 @@ export default function NewDashboard({ data, apiStats }) {
   return (
     <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 2 }}>
       <Grid container spacing={3}>
-        {/* Row 1: Operations (API Data) */}
+        {/* Row 1: Focus on New & Key Metrics */}
+        <Grid xs={12} sm={6} md={3}>
+          <SummaryCard title="이번 달 신규 등록" total={`${stats.newStudents}건`} icon="solar:user-plus-bold-duotone" color="#6366f1" />
+        </Grid>
+        <Grid xs={12} sm={6} md={3}>
+          <SummaryCard title="현재 총 재원생" total={`${stats.totalStudents}명`} icon="solar:users-group-two-rounded-bold-duotone" color="#3b82f6" />
+        </Grid>
+        <Grid xs={12} sm={6} md={3}>
+          <SummaryCard title="결제 완료 (파일)" total={`${stats.paidCount}명`} icon="solar:check-circle-bold-duotone" color="#10b981" />
+        </Grid>
+        <Grid xs={12} sm={6} md={3}>
+          <SummaryCard title="미결제 현황 (파일)" total={`${stats.unpaidCount}명`} icon="solar:shield-warning-bold-duotone" color="#ffab00" />
+        </Grid>
+
+        {/* Row 2: Finance & Operations */}
+        <Grid xs={12} sm={6} md={3}>
+          <SummaryCard title="예상 총 매출" total={`₩${stats.totalRevenue.toLocaleString()}`} icon="solar:wad-of-money-bold-duotone" color="#10b981" />
+        </Grid>
+        <Grid xs={12} sm={6} md={3}>
+          <SummaryCard title="미결제 총액" total={`₩${stats.unpaidAmount.toLocaleString()}`} icon="solar:bill-list-bold-duotone" color="#f43f5e" />
+        </Grid>
         <Grid xs={12} sm={6} md={3}>
           <SummaryCard title="신규 상담 요청" total={`${apiStats.consultingCount}건`} icon="solar:history-bold-duotone" color="#C684FF" />
         </Grid>
         <Grid xs={12} sm={6} md={3}>
-          <SummaryCard title="보강 필요 학생" total={`${apiStats.reservationCount}명`} icon="eva:people-fill" color="#FFAB00" />
-        </Grid>
-        <Grid xs={12} sm={6} md={3}>
-          <SummaryCard title="총 재원생 (서버)" total={`${apiStats.userCount}명`} icon="solar:users-group-two-rounded-bold-duotone" color="#3b82f6" />
-        </Grid>
-        <Grid xs={12} sm={6} md={3}>
-          <SummaryCard title="이번 달 신규 등록" total={`${stats.newStudents}건`} icon="solar:user-plus-bold-duotone" color="#6366f1" />
-        </Grid>
-
-        {/* Row 2: Analysis (CSV Data) */}
-        <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="매출 현황 (CSV)" total={`₩${stats.totalRevenue.toLocaleString()}`} icon="solar:wad-of-money-bold-duotone" color="#10b981" />
-        </Grid>
-        <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="미결제 총액 (CSV)" total={`₩${stats.unpaidAmount.toLocaleString()}`} icon="solar:bill-list-bold-duotone" color="#f43f5e" />
-        </Grid>
-        <Grid xs={12} sm={12} md={4}>
-          <SummaryCard title="데이터 분석 대상" total={`${stats.totalStudents}명`} icon="solar:document-text-bold-duotone" color="#64748b" />
+          <SummaryCard title="보강 필요 학생" total={`${apiStats.reservationCount}명`} icon="eva:people-fill" color="#FF5630" />
         </Grid>
 
         {/* Main Content Layout: 2 Columns (Left 8, Right 4) */}
@@ -155,6 +162,8 @@ NewDashboard.propTypes = {
     consultingCount: PropTypes.number,
     reservationCount: PropTypes.number,
     userCount: PropTypes.number,
+    paidCount: PropTypes.number,
+    unpaidCount: PropTypes.number,
   }),
 };
 

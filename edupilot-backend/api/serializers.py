@@ -36,9 +36,23 @@ class UserLoginSerializer(TokenObtainPairSerializer):
 
 
 class StudentMasterSerializer(serializers.ModelSerializer):
+    current_course = serializers.SerializerMethodField()
+
     class Meta:
         model = StudentMaster
         fields = '__all__'
+
+    def get_current_course(self, obj):
+        # 가장 최근 등록된 수강 정보를 가져옴
+        course = obj.courses.order_by('-id').first()
+        if course:
+            return {
+                'course': course.course,
+                'time': course.time,
+                'teacher': course.subject, # subject 필드에 담당자 정보가 들어가는 구조 고려
+                'memo': course.memo
+            }
+        return None
 
 
 class CourseMasterSerializer(serializers.ModelSerializer):

@@ -11,9 +11,10 @@ NC='\033[0m' # No Color
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BACKEND_DIR="$BASE_DIR/edupilot-backend"
 FRONTEND_DIR="$BASE_DIR/edupilot-frontend"
+KIOSK_DIR="/Users/aiden/Desktop/프로젝트/timetable/dlab-attendance"
 
 echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}       EduPilot 통합 개발 서버 시작      ${NC}"
+echo -e "${BLUE}       EduPilot 통합 서비스 시작         ${NC}"
 echo -e "${BLUE}=======================================${NC}"
 
 # 포트 점유 확인 및 정리 함수
@@ -37,46 +38,49 @@ check_port() {
 # 1. 포트 확인
 check_port 8000 "Backend"
 check_port 3030 "Frontend"
+check_port 3001 "Kiosk"
 
 # 2. 백엔드 준비
-echo -e "\n${GREEN}[1/2] 백엔드(Django) 준비 중...${NC}"
+echo -e "\n${GREEN}[1/3] 백엔드(Django) 준비 중...${NC}"
 cd "$BACKEND_DIR"
-
 if [ ! -d ".venv" ]; then
-    echo -e "${YELLOW}[Info]${NC} 가상환경(.venv)이 없습니다. 생성을 시도합니다..."
+    echo -e "${YELLOW}[Info]${NC} 가상환경이 없습니다. 생성을 시도합니다..."
     python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
 fi
-
-source .venv/bin/activate
-# 의존성 설치 여부 간단 체크 (requirements.txt 기준)
-# pip install -r requirements.txt # 매번 실행하면 느릴 수 있으므로 필요시 주석 해제
 
 # 3. 프론트엔드 준비
-echo -e "${GREEN}[2/2] 프론트엔드(React/Vite) 준비 중...${NC}"
+echo -e "${GREEN}[2/3] 프론트엔드(React) 준비 중...${NC}"
 cd "$FRONTEND_DIR"
-
 if [ ! -d "node_modules" ]; then
-    echo -e "${YELLOW}[Info]${NC} 의존성 패키지(node_modules)가 없습니다. 설치를 시작합니다..."
-    if command -v yarn &> /dev/null; then
-        yarn install
-    else
-        npm install
-    fi
+    echo -e "${YELLOW}[Info]${NC} 프론트엔드 의존성 설치 중..."
+    npm install
 fi
 
-# 4. 서버 동시 실행 및 로그 관리
+# 4. 키오스크 준비
+echo -e "${GREEN}[3/3] 키오스크(Next.js) 준비 중...${NC}"
+cd "$KIOSK_DIR"
+if [ ! -d "node_modules" ]; then
+    echo -e "${YELLOW}[Info]${NC} 키오스크 의존성 설치 중..."
+    npm install
+fi
+
+# 5. 서버 동시 실행 및 로그 관리
 echo -e "\n${BLUE}=======================================${NC}"
-echo -e "${GREEN}서버를 실행합니다. (종료: Ctrl+C)${NC}"
+echo -e "${GREEN}모든 서버를 실행합니다. (종료: Ctrl+C)${NC}"
 echo -e "${GREEN}백엔드: http://localhost:8000${NC}"
 echo -e "${GREEN}프론트엔드: http://localhost:3030${NC}"
+echo -e "${GREEN}키오스크: http://localhost:3001${NC}"
 echo -e "${BLUE}=======================================${NC}\n"
 
 # 종료 처리 함수
 cleanup() {
-    echo -e "\n\n${YELLOW}서버를 종료하는 중입니다...${NC}"
+    echo -e "\n\n${YELLOW}모든 서버를 종료하는 중입니다...${NC}"
     [ ! -z "$BACKEND_PID" ] && kill $BACKEND_PID 2>/dev/null
     [ ! -z "$FRONTEND_PID" ] && kill $FRONTEND_PID 2>/dev/null
-    echo -e "${GREEN}모든 서버가 종료되었습니다.${NC}"
+    [ ! -z "$KIOSK_PID" ] && kill $KIOSK_PID 2>/dev/null
+    echo -e "${GREEN}종료 완료.${NC}"
     exit
 }
 
@@ -84,18 +88,19 @@ trap cleanup SIGINT
 
 # 백엔드 실행
 cd "$BACKEND_DIR"
-# 가상환경의 파이썬을 직접 사용하여 실행 (가장 확실한 방법)
 ./.venv/bin/python manage.py runserver 0.0.0.0:8000 --settings=backend.settings.local > backend.log 2>&1 &
 BACKEND_PID=$!
 
 # 프론트엔드 실행
 cd "$FRONTEND_DIR"
-if command -v yarn &> /dev/null; then
-    yarn dev > frontend.log 2>&1 &
-else
-    npm run dev > frontend.log 2>&1 &
-fi
+npm run dev > frontend.log 2>&1 &
 FRONTEND_PID=$!
 
-# 로그 출력을 보며 대기
+# 키오스크 실행
+cd "$KIOSK_DIR"
+PORT=3001 npm run dev > kiosk.log 2>&1 &
+KIOSK_PID=$!
+
+# 로그 모니터링 (선택 사항)
+echo "로그 파일들이 생성되었습니다: backend.log, frontend.log, kiosk.log"
 wait
