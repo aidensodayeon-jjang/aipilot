@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+      .card { background: white; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; }
+      .icon-box { padding: 0.75rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; }
+    </style>
+  </head>
+  <body class="p-4 md:p-8 text-slate-900">
+    
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto mb-8 flex items-center gap-3">
+      <div class="p-3 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-200">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">목동 코딩학원 운영 대시보드</h1>
+        <p class="text-slate-500 text-sm">Google Sheets 데이터 실시간 연동</p>
+      </div>
+    </header>
+
+    <div id="loading" class="text-center py-20">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+      <p class="text-slate-500">데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <main id="dashboard" class="max-w-7xl mx-auto space-y-6 hidden">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="summary-cards">
+        <!-- Cards will be injected here -->
+      </div>
+
+      <!-- Main Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Payment Chart -->
+            <div class="card">
+              <h3 class="text-lg font-semibold text-slate-800 mb-4">결제 상태 비중</h3>
+              <div class="h-[250px] flex justify-center">
+                <canvas id="paymentChart"></canvas>
+              </div>
+            </div>
+            <!-- School Ranking -->
+            <div class="card">
+              <h3 class="text-lg font-semibold text-slate-800 mb-4">학교별 재원생 Top 10</h3>
+              <div class="h-[250px]">
+                <canvas id="schoolChart"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Instructor Performance -->
+          <div class="card">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">강사별 담당 과목 분포</h3>
+            <div class="h-[300px]">
+              <canvas id="instructorChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Heatmap -->
+          <div class="card overflow-x-auto">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">요일/시간대별 수업 밀집도</h3>
+            <div id="heatmap-container" class="min-w-[600px]">
+              <!-- Table injected here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+          <!-- Grade Analysis -->
+          <div class="card" id="grade-analysis">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">학년별 구성비</h3>
+            <div id="grade-bars" class="space-y-4">
+              <!-- Bars injected here -->
+            </div>
+            <div class="mt-6 p-4 bg-slate-50 rounded-lg text-sm text-slate-600" id="grade-insight"></div>
+          </div>
+
+          <!-- Insights Panel -->
+          <div class="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-xl shadow-sm border border-indigo-100">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+              <h3 class="text-lg font-semibold text-indigo-900">AI 운영 인사이트</h3>
+            </div>
+            <div class="space-y-4" id="insights-container">
+              <!-- Insights injected here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // Icons (SVG strings)
+      const icons = {
+        users: '<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>',
+        dollar: '<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        alert: '<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        plus: '<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>'
+      };
+
+      // Main Logic
+      window.onload = function() {
+        google.script.run.withSuccessHandler(renderDashboard).getData();
+      };
+
+      function renderDashboard(data) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+
+        if (!data || data.length === 0) {
+          alert('데이터가 없습니다. 시트 데이터를 확인해주세요.');
+          return;
+        }
+
+        renderSummaryCards(data);
+        renderCharts(data);
+        renderHeatmap(data);
+        renderGradeAnalysis(data);
+        renderInsights(data);
+      }
+
+      function renderSummaryCards(data) {
+        const totalStudents = data.length;
+        const totalRevenue = data.reduce((acc, curr) => acc + curr.paymentAmount, 0);
+        const unpaidAmount = data.filter(d => d.paymentStatus === '미결제').reduce((acc, curr) => acc + curr.paymentAmount, 0);
+        const newStudents = data.filter(d => d.isNew).length;
+
+        const cards = [
+          { title: "총 재원생", value: `${totalStudents}명`, icon: icons.users, color: "bg-blue-500" },
+          { title: "총 매출액", value: `₩${totalRevenue.toLocaleString()}`, icon: icons.dollar, color: "bg-emerald-500" },
+          { title: "미결제 총액", value: `₩${unpaidAmount.toLocaleString()}`, icon: icons.alert, color: "bg-rose-500" },
+          { title: "신규 등록 (이번 달)", value: `${newStudents}건`, icon: icons.plus, color: "bg-indigo-500" }
+        ];
+
+        const container = document.getElementById('summary-cards');
+        container.innerHTML = cards.map(card => `
+          <div class="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-slate-500">${card.title}</p>
+                <h3 class="text-2xl font-bold text-slate-900 mt-2">${card.value}</h3>
+              </div>
+              <div class="p-3 rounded-lg ${card.color} icon-box">
+                ${card.icon}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      function renderCharts(data) {
+        // Payment Status Chart
+        const statusCounts = data.reduce((acc, curr) => {
+          acc[curr.paymentStatus] = (acc[curr.paymentStatus] || 0) + 1;
+          return acc;
+        }, {});
+        
+        new Chart(document.getElementById('paymentChart'), {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(statusCounts),
+            datasets: [{
+              data: Object.values(statusCounts),
+              backgroundColor: ['#10b981', '#f43f5e', '#94a3b8'],
+              borderWidth: 0
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // School Ranking Chart
+        const schoolCounts = data.reduce((acc, curr) => {
+          if (curr.school && curr.school !== 'Unknown') {
+            acc[curr.school] = (acc[curr.school] || 0) + 1;
+          }
+          return acc;
+        }, {});
+        const sortedSchools = Object.entries(schoolCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+        new Chart(document.getElementById('schoolChart'), {
+          type: 'bar',
+          data: {
+            labels: sortedSchools.map(d => d[0]),
+            datasets: [{
+              label: '학생 수',
+              data: sortedSchools.map(d => d[1]),
+              backgroundColor: '#3b82f6',
+              borderRadius: 4
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
+          }
+        });
+
+        // Instructor Chart
+        const instructorMap = {};
+        const allCourses = new Set();
+        data.forEach(s => {
+          if (!s.instructor || s.instructor === 'Unknown') return;
+          if (!instructorMap[s.instructor]) instructorMap[s.instructor] = {};
+          instructorMap[s.instructor][s.course] = (instructorMap[s.instructor][s.course] || 0) + 1;
+          allCourses.add(s.course);
+        });
+
+        const instructors = Object.keys(instructorMap);
+        const courses = Array.from(allCourses);
+        const palette = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#6366f1'];
+
+        const datasets = courses.map((course, idx) => ({
+          label: course,
+          data: instructors.map(inst => instructorMap[inst][course] || 0),
+          backgroundColor: palette[idx % palette.length]
+        }));
+
+        new Chart(document.getElementById('instructorChart'), {
+          type: 'bar',
+          data: { labels: instructors, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { x: { stacked: true }, y: { stacked: true } }
+          }
+        });
+      }
+
+      function renderHeatmap(data) {
+        const days = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+        const slots = {};
+        const times = new Set();
+
+        data.forEach(s => {
+          if (!s.time) return;
+          const parts = s.time.split(' ');
+          if (parts.length < 2) return;
+          const day = parts[0];
+          const time = parts[1];
+          if (!days.includes(day)) return;
+
+          if (!slots[day]) slots[day] = {};
+          slots[day][time] = (slots[day][time] || 0) + 1;
+          times.add(time);
+        });
+
+        const sortedTimes = Array.from(times).sort();
+        
+        let html = '<table class="w-full text-sm text-center"><thead><tr><th class="p-2 bg-slate-50 text-slate-500 rounded-tl-lg">시간 / 요일</th>';
+        days.forEach(day => html += `<th class="p-2 bg-slate-50 text-slate-700">${day}</th>`);
+        html += '</tr></thead><tbody>';
+
+        sortedTimes.forEach(time => {
+          html += `<tr class="border-t border-slate-100"><td class="p-2 font-medium text-slate-500 bg-slate-50">${time}</td>`;
+          days.forEach(day => {
+            const count = slots[day]?.[time] || 0;
+            let cellContent = '<span class="text-slate-300">-</span>';
+            if (count > 0) {
+              const colorClass = count >= 5 ? 'bg-indigo-600' : count >= 3 ? 'bg-indigo-400' : 'bg-indigo-200';
+              cellContent = `<div class="mx-auto rounded-md py-1 px-2 text-xs font-bold text-white ${colorClass}">${count}명</div>`;
+            }
+            html += `<td class="p-2">${cellContent}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('heatmap-container').innerHTML = html;
+      }
+
+      function renderGradeAnalysis(data) {
+        let elementaryHigh = 0, middle = 0, others = 0;
+        data.forEach(s => {
+          if (s.grade.includes('초5') || s.grade.includes('초6')) elementaryHigh++;
+          else if (s.grade.includes('중')) middle++;
+          else others++;
+        });
+        const total = data.length;
+        const stats = {
+          elem: { count: elementaryHigh, pct: (elementaryHigh/total)*100 },
+          mid: { count: middle, pct: (middle/total)*100 },
+          other: { count: others, pct: (others/total)*100 }
+        };
+
+        const renderBar = (label, stat, color) => `
+          <div>
+            <div class="flex justify-between text-sm mb-1">
+              <span class="font-medium text-slate-700">${label}</span>
+              <span class="text-slate-500">${stat.count}명 (${stat.pct.toFixed(1)}%)</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2.5">
+              <div class="${color} h-2.5 rounded-full" style="width: ${stat.pct}%"></div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('grade-bars').innerHTML = 
+          renderBar('초등 고학년 (5-6학년)', stats.elem, 'bg-emerald-500') +
+          renderBar('중등부 (1-3학년)', stats.mid, 'bg-blue-500') +
+          renderBar('기타', stats.other, 'bg-slate-300');
+
+        const insightText = stats.elem.count > stats.mid.count 
+          ? '초등 고학년 비중이 높습니다. 중등 연계 심화 과정(파이썬, C언어 기초)을 강화하여 장기 재원을 유도하세요.'
+          : '중등부 비중이 높습니다. 내신 대비 및 특목고 입시 관련 포트폴리오 반을 개설하면 효과적입니다.';
+        
+        document.getElementById('grade-insight').innerHTML = `<p class="font-semibold mb-1">💡 커리큘럼 제안:</p><p>${insightText}</p>`;
+      }
+
+      function renderInsights(data) {
+        let earlyBird = 0, sibling = 0, unpaid = 0, unpaidAmt = 0;
+        data.forEach(s => {
+          if (s.remarks.includes('얼리버드')) earlyBird++;
+          if (s.remarks.includes('형제') || s.remarks.includes('가족')) sibling++;
+          if (s.paymentStatus === '미결제') { unpaid++; unpaidAmt += s.paymentAmount; }
+        });
+
+        const insights = [
+          { title: "얼리버드 혜택 의존도", content: `전체 수강생 중 ${earlyBird}명이 얼리버드 혜택 이용 중. 사전 알림 시스템 강화 필요.`, priority: "High", color: "bg-amber-100 text-amber-700" },
+          { title: "미수금 관리 필요", content: `미결제 ${unpaid}명, 총 ₩${unpaidAmt.toLocaleString()}. 알림톡 발송 요망.`, priority: "Critical", color: "bg-rose-100 text-rose-700" },
+          { title: "형제/지인 소개 마케팅", content: `형제/지인 소개 ${sibling}건 확인. 소개 이벤트 공식화 추천.`, priority: "Medium", color: "bg-blue-100 text-blue-700" }
+        ];
+
+        document.getElementById('insights-container').innerHTML = insights.map(i => `
+          <div class="bg-white p-4 rounded-lg border border-indigo-50 shadow-sm">
+            <div class="flex justify-between items-start mb-2">
+              <h4 class="font-semibold text-slate-800">${i.title}</h4>
+              <span class="text-xs px-2 py-1 rounded-full font-medium ${i.color}">${i.priority}</span>
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed">${i.content}</p>
+          </div>
+        `).join('');
+      }
+    </script>
+  </body>
+</html>
