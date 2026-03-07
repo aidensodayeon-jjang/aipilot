@@ -29,6 +29,7 @@ export default function SettingsView() {
     vacation_start: '',
     vacation_end: '',
   });
+  const [callId, setCallId] = useState('');
 
   const navigate = useNavigate();
 
@@ -45,6 +46,10 @@ export default function SettingsView() {
       }
     };
     loadSemester();
+    
+    // 발신번호 로드
+    const savedCallId = localStorage.getItem('SOLAPI_CALL_ID') || '';
+    setCallId(savedCallId);
   }, [navigate]);
 
   const handleFileUpload = async (event, type) => {
@@ -87,6 +92,9 @@ export default function SettingsView() {
   const handleSaveSemester = async () => {
     setLoading({ ...loading, semester: true });
     try {
+      // 발신번호 저장
+      localStorage.setItem('SOLAPI_CALL_ID', callId);
+
       const response = await fetchWithToken('/api/semester/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,7 +102,7 @@ export default function SettingsView() {
       }, navigate);
 
       if (response.ok) {
-        setStatus({ type: 'success', message: '학기 일정이 저장되었습니다.' });
+        setStatus({ type: 'success', message: '학기 일정 및 발신번호가 저장되었습니다.' });
       } else {
         setStatus({ type: 'error', message: '저장 실패' });
       }
@@ -127,7 +135,7 @@ export default function SettingsView() {
         {/* 학기 일정 관리 */}
         <Grid xs={12} md={12}>
           <Card sx={{ p: 4, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-            <Typography variant="h6" sx={{ mb: 3, color: '#1e293b' }}>📅 학기 일정 관리 (11주차 시스템)</Typography>
+            <Typography variant="h6" sx={{ mb: 3, color: '#1e293b' }}>📅 운영 설정 (학기 및 문자 발송)</Typography>
             <Grid container spacing={3}>
               <Grid xs={12} md={4}>
                 <TextField
@@ -177,15 +185,25 @@ export default function SettingsView() {
                   onChange={(e) => setSemesterInfo({ ...semesterInfo, vacation_end: e.target.value })}
                 />
               </Grid>
-              <Grid xs={12} md={4} sx={{ display: 'flex', alignItems: 'center' }}>
+              <Grid xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="문자 발신번호 (Call ID)"
+                  placeholder="01012345678"
+                  value={callId}
+                  onChange={(e) => setCallId(e.target.value)}
+                  helperText="솔라피에 등록된 발신번호를 입력하세요."
+                />
+              </Grid>
+              <Grid xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   variant="contained"
                   size="large"
                   onClick={handleSaveSemester}
                   disabled={loading.semester}
-                  sx={{ bgcolor: '#1e293b', color: 'white', px: 4, py: 1.5, borderRadius: 1.5, fontWeight: 700 }}
+                  sx={{ bgcolor: '#1e293b', color: 'white', px: 6, py: 1.5, borderRadius: 1.5, fontWeight: 700 }}
                 >
-                  {loading.semester ? <CircularProgress size={24} color="inherit" /> : '학기 정보 저장'}
+                  {loading.semester ? <CircularProgress size={24} color="inherit" /> : '설정 저장하기'}
                 </Button>
               </Grid>
             </Grid>

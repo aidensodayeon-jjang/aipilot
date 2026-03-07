@@ -1,0 +1,9 @@
+[AUTH]
+api_key = YOUR_SOLAPI_API_KEY
+api_secret = YOUR_SOLAPI_API_SECRET
+call_id = YOUR_REGISTERED_CALL_ID
+
+[SERVER]
+protocol = https
+domain = api.solapi.com
+prefix =

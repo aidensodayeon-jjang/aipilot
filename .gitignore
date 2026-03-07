@@ -54,3 +54,4 @@ edupilot-backend/db*.json
 edupilot-backend/attend_and_history.json
 edupilot-backend/coursemaster.json
 edupilot-backend/studentmaster.json
+edupilot-backend/api/utils/config.ini
