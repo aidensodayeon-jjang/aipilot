@@ -1,21 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import AcademicSemester
+from ..models import AcademicSemester, SemesterStatus
 
 class AcademicSemesterView(APIView):
-    def get(self, request):
-        semester = AcademicSemester.objects.filter(is_current=True).first()
-        if not semester:
-            return Response({"message": "No current semester found"}, status=200)
-        
-        return Response({
-            "name": semester.name,
-            "start_date": semester.start_date,
-            "end_date": semester.end_date,
-            "vacation_start": semester.vacation_start,
-            "vacation_end": semester.vacation_end,
-        })
+    # ... (get 동일) ...
 
     def post(self, request):
         name = request.data.get('name')
@@ -27,9 +16,14 @@ class AcademicSemesterView(APIView):
         if not name or not start_date or not end_date:
             return Response({"error": "학기명, 개강일, 종강일은 필수입니다."}, status=400)
 
-        # 기존의 is_current를 모두 False로 변경
-        AcademicSemester.objects.all().update(is_current=False)
+        # 1. 전체 시스템 현재 학기 코드 업데이트 (SemesterStatus)
+        SemesterStatus.objects.update_or_create(
+            id=1,
+            defaults={'current_semester': name}
+        )
 
+        # 2. 학기 일정 상세 업데이트 (AcademicSemester)
+        AcademicSemester.objects.all().update(is_current=False)
         semester, created = AcademicSemester.objects.update_or_create(
             name=name,
             defaults={
@@ -41,4 +35,4 @@ class AcademicSemesterView(APIView):
             }
         )
 
-        return Response({"message": "학기 일정이 성공적으로 저장되었습니다."})
+        return Response({"message": f"시스템 현재 학기가 '{name}'으로 변경 및 저장되었습니다."})

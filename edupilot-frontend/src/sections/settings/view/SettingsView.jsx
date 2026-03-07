@@ -140,9 +140,10 @@ export default function SettingsView() {
               <Grid xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="학기 명칭"
+                  label="현재 학기 코드 (예: 2603)"
                   value={semesterInfo.name}
                   onChange={(e) => setSemesterInfo({ ...semesterInfo, name: e.target.value })}
+                  helperText="입력한 코드가 수강 기록의 학기 기준으로 자동 적용됩니다."
                 />
               </Grid>
               <Grid xs={12} md={4}>

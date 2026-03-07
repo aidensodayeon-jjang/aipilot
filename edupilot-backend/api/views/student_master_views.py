@@ -38,29 +38,14 @@ class StudentMasterView(APIView):
             except Exception as e:
                 print(f"Error reading CSV for unprocessed filter: {e}")
 
-            # 2. DB에는 '재원생'이지만 CSV 명단에는 없는 학생 필터링
+            # 2. DB에는 '재원생'이지만 CSV 명단에는 없는 학생만 필터링 (조예준 등)
             return StudentMaster.objects.filter(status='재원생').exclude(name__in=csv_names)
 
-        if status_param == '재원생':
-            # 1. CSV 파일에서 현재 명단 이름 추출
-            import csv
-            csv_path = "/Users/aiden/Desktop/프로젝트/aipilot-main/edupilot-frontend/src/data/raw_data.csv"
-            csv_names = set()
-            try:
-                with open(csv_path, mode='r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        name = (row.get('학생이름') or row.get('\ufeff학생이름') or '').strip()
-                        if name:
-                            csv_names.add(name)
-            except Exception as e:
-                print(f"Error reading CSV for 재원생 filter: {e}")
-
-            # 2. CSV 명단에 있고 상태가 '재원생'인 학생만 반환 (정확히 43명 내외 일치)
-            return StudentMaster.objects.filter(status='재원생', name__in=csv_names)
-
         if status_param:
+            # 재원생, 휴원생, 미등록, 상담중 등 일반 상태는 DB 기준으로 필터링
             return StudentMaster.objects.filter(status=status_param)
+
+        return StudentMaster.objects.all()
 
         return StudentMaster.objects.all()
 

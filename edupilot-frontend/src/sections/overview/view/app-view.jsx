@@ -28,6 +28,8 @@ export default function AppView() {
   const [totalConsultingCount, setTotalConsultingCount] = useState(0);
   const [totalReservationCount, setTotalReservationCount] = useState(0);
   const [TotalUserCount, setTotalUserCount] = useState(0);
+  const [totalLeaveCount, setTotalLeaveCount] = useState(0);
+  const [totalUnregCount, setTotalUnregCount] = useState(0);
   const [totalPaidCount, setTotalPaidCount] = useState(0);
   const [totalUnpaidCount, setTotalUnpaidCount] = useState(0);
 
@@ -58,6 +60,8 @@ export default function AppView() {
         setTotalConsultingCount(result.total_consulting_count || 0);
         setTotalReservationCount(result.total_reservation_count || 0);
         setTotalUserCount(result.total_user_count || 0);
+        setTotalLeaveCount(result.total_leave_count || 0);
+        setTotalUnregCount(result.total_unreg_count || 0);
         setTotalPaidCount(result.total_paid_count || 0);
         setTotalUnpaidCount(result.total_unpaid_count || 0);
       })
@@ -126,6 +130,8 @@ export default function AppView() {
             consultingCount: totalConsultingCount,
             reservationCount: totalReservationCount,
             userCount: TotalUserCount,
+            leaveCount: totalLeaveCount,
+            unregCount: totalUnregCount,
             paidCount: totalPaidCount,
             unpaidCount: totalUnpaidCount,
           }}

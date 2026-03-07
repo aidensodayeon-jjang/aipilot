@@ -16,9 +16,13 @@ class StudentImportView(APIView):
         if not file:
             return Response({"error": "No file uploaded"}, status=400)
 
-        # 현재 학기 정보 가져오기
+        # 1. 현재 학기 정보 가져오기 (형식: YYMM, 예: 2603)
         current_semester_obj = SemesterStatus.objects.first()
-        current_semester = current_semester_obj.current_semester if current_semester_obj else datetime.now().strftime('%Y%m')
+        if current_semester_obj:
+            current_semester = current_semester_obj.current_semester
+        else:
+            # DB에 설정이 없으면 현재 날짜 기준 생성 (2026-03-07 -> 2603)
+            current_semester = datetime.now().strftime('%y%m') 
 
         decoded_file = file.read().decode('utf-8')
         io_string = io.StringIO(decoded_file)
@@ -30,7 +34,7 @@ class StudentImportView(APIView):
             phone_parent = row.get('학부모 연락처', '').strip()
             if not name: continue
 
-            # 1. 학생 정보 DB화 (StudentMaster)
+            # 2. 학생 정보 DB화 (StudentMaster)
             student, created = StudentMaster.objects.update_or_create(
                 name=name,
                 phone_parent=phone_parent,
@@ -42,51 +46,55 @@ class StudentImportView(APIView):
                 }
             )
             
-            # 2. 수강 정보 자동 연결 (시간표 Enrollment 및 수강 이력 CourseMaster)
+            # 3. 수강 정보 및 과정 등록 (CourseMaster)
             course_raw = row.get('수강과목', '').strip()
             time_info = row.get('수강시간', '').strip()
             
             if course_raw:
-                # 2-1. 수강 이력(CourseMaster) 추가
-                CourseMaster.objects.get_or_create(
+                # CourseMaster에 현재 학기(2603) 및 과정 구분(정규) 등록
+                CourseMaster.objects.update_or_create(
                     userid=student,
-                    course=course_raw,
                     term=current_semester,
+                    course=course_raw,
                     defaults={
+                        'subject': course_raw,
                         'phone_parent': phone_parent,
-                        'time': time_info
+                        'time': time_info,
+                        'openlab': '정규', # 과정을 '정규'로 명시
+                        'pay': '결제완료' if row.get('수강료결제') == '결제완료' else '미결제'
                     }
                 )
 
-                # 2-2. 시간표(Enrollment) 연결
+                # 4. 시간표(Enrollment) 연결
                 if time_info:
                     try:
                         parts = time_info.split(' ')
-                        day_kr = parts[0]
-                        time_str = parts[1]
-                        day_en = DAY_MAP.get(day_kr)
-                        
-                        if day_en:
-                            subject_clean = course_raw.split('(')[0].strip()
-                            course_class = CourseClass.objects.filter(
-                                subject_name__icontains=subject_clean,
-                                day_of_week=day_en
-                            ).filter(start_time__icontains=time_str).first()
+                        if len(parts) >= 2:
+                            day_kr = parts[0]
+                            time_str = parts[1]
+                            day_en = DAY_MAP.get(day_kr)
                             
-                            if not course_class:
+                            if day_en:
+                                subject_clean = course_raw.split('(')[0].strip()
                                 course_class = CourseClass.objects.filter(
                                     subject_name__icontains=subject_clean,
                                     day_of_week=day_en
-                                ).first()
+                                ).filter(start_time__icontains=time_str).first()
+                                
+                                if not course_class:
+                                    course_class = CourseClass.objects.filter(
+                                        subject_name__icontains=subject_clean,
+                                        day_of_week=day_en
+                                    ).first()
 
-                            if course_class:
-                                Enrollment.objects.get_or_create(student=student, course_class=course_class)
+                                if course_class:
+                                    Enrollment.objects.get_or_create(student=student, course_class=course_class)
                     except Exception as e:
-                        print(f"Enrollment error for {name}: {e}")
+                        print(f"Enrollment matching error for {name}: {e}")
             
             success_count += 1
 
-        return Response({"message": f"{success_count}명의 학생 정보 및 수강 기록이 DB에 반영되었습니다."})
+        return Response({"message": f"{success_count}명의 학생 정보 및 {current_semester} 학기 수강 기록이 반영되었습니다."})
 
 class TimetableImportView(APIView):
     parser_classes = [MultiPartParser]

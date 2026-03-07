@@ -13,7 +13,6 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 
 import { usePathname } from 'src/routes/hooks';
-import { useNavigate } from 'react-router-dom';
 import { RouterLink } from 'src/routes/components';
 
 import { useResponsive } from 'src/hooks/use-responsive';
@@ -25,7 +24,6 @@ import SvgColor from 'src/components/svg-color';
 
 import { NAV } from './config-layout';
 import navConfigData from './config-navigation';
-import { fetchWithToken } from '../../utils/auth/fetch-with-token';
 
 const icon = (name) => (
     <SvgColor src={`/assets/icons/navbar/${name}.svg`} sx={{ width: 1, height: 1 }} />
@@ -35,48 +33,31 @@ const icon = (name) => (
 export default function Nav({ openNav, onCloseNav }) {
   const pathname = usePathname();
   const upLg = useResponsive('up', 'lg');
-  const navigate = useNavigate();
   const [navConfig, setNavConfig] = useState(navConfigData);
 
   useEffect(() => {
-    const fetchStatuses = async () => {
-        try {
-            const response = await fetchWithToken('/api/students/statuses/', {}, navigate);
-            const statuses = await response.json();
-            
-            const studentStatusSubMenu = statuses.map(status => ({
-                title: status,
-                path: `/students/${status}`,
-            }));
+    const studentStatusSubMenu = [
+        { title: '✅ 재원생', path: '/students/재원생' },
+        { title: '💤 휴원생', path: '/students/휴원생' },
+        { title: '📝 상담중', path: '/students/상담중' },
+        { title: '⚪ 미등록', path: '/students/미등록' },
+        { title: '⚠️ 미처리', path: '/students/unprocessed' },
+    ];
 
-            studentStatusSubMenu.unshift({
-                title: '⚠️ 미처리',
-                path: '/students/unprocessed',
-            });
-
-            const newNavConfig = navConfigData.filter(item => item.title !== '상담 관리');
-            const userManagementIndex = newNavConfig.findIndex(item => item.title === '원생 관리');
-
-            const studentStatusMenu = {
-                title: '학생 현황',
-                path: '/students',
-                icon: icon('ic_analytics'),
-                children: studentStatusSubMenu,
-            };
-
-            if (userManagementIndex !== -1) {
-                newNavConfig.splice(userManagementIndex + 1, 0, studentStatusMenu);
-            } else {
-                newNavConfig.push(studentStatusMenu);
-            }
-
-            setNavConfig(newNavConfig);
-        } catch (error) {
-            console.error('Failed to fetch student statuses:', error);
-        }
+    // 기존 메뉴에서 상담 관리만 제거 (원생 관리는 유지)
+    const newNavConfig = navConfigData.filter(item => item.title !== '상담 관리');
+    
+    const studentStatusMenu = {
+        title: '학생 현황',
+        path: '/students',
+        icon: icon('ic_analytics'),
+        children: studentStatusSubMenu,
     };
 
-    fetchStatuses();
+    // '학생 현황'을 대시보드(0) 바로 다음인 인덱스 1에 삽입
+    // 기존 '원생 관리'는 그 뒤로 밀려나거나 유지됨
+    newNavConfig.splice(1, 0, studentStatusMenu);
+    setNavConfig(newNavConfig);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

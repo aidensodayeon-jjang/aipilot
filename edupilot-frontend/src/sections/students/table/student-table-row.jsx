@@ -29,7 +29,7 @@ export default function StudentTableRow({
           <MenuItem value="재원생">재원생</MenuItem>
           <MenuItem value="휴원생">휴원생</MenuItem>
           <MenuItem value="상담중">상담중</MenuItem>
-          <MenuItem value="종료">종료</MenuItem>
+          <MenuItem value="미등록">미등록</MenuItem>
         </Select>
       </TableCell>
 
