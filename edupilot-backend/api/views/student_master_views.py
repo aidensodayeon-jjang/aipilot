@@ -1,6 +1,7 @@
 import os
-
 from django.core.files.storage import default_storage
+from django.db import transaction
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser
@@ -8,115 +9,111 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.pagination import PageNumberPagination
 
-from api.models import StudentMaster
+from api.models import StudentMaster, CourseMaster, SemesterStatus, Attend, History, Enrollment, AttendanceLog
 from api.serializers import StudentMasterSerializer
 
+class StudentPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class StudentMasterView(APIView):
     permission_classes = [IsAdminUser]
     authentication_classes = [JWTAuthentication]
-
+    pagination_class = StudentPagination
     serializer_class = StudentMasterSerializer
 
-    @staticmethod
-    def get_queryset(request):
+    def get_queryset(self):
+        request = self.request
         status_param = request.query_params.get('status')
+        search_query = request.query_params.get('search', '').strip()
+        base_queryset = StudentMaster.objects.prefetch_related('courses').order_by('-id')
+
+        if search_query:
+            base_queryset = base_queryset.filter(
+                Q(name__icontains=search_query) | Q(phone_parent__icontains=search_query)
+            )
 
         if status_param == 'unprocessed':
-            # 1. CSV 파일 절대 경로 설정
-            import csv
-            csv_path = "/Users/aiden/Desktop/프로젝트/aipilot-main/edupilot-frontend/src/data/raw_data.csv"
-            csv_names = set()
-            try:
-                with open(csv_path, mode='r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        name = (row.get('학생이름') or row.get('\ufeff학생이름') or '').strip()
-                        if name:
-                            csv_names.add(name)
-            except Exception as e:
-                print(f"Error reading CSV for unprocessed filter: {e}")
-
-            # 2. DB에는 '재원생'이지만 CSV 명단에는 없는 학생만 필터링 (조예준 등)
-            return StudentMaster.objects.filter(status='재원생').exclude(name__in=csv_names)
+            current_semester_obj = SemesterStatus.objects.first()
+            if not current_semester_obj: return base_queryset.none()
+            current_semester = current_semester_obj.current_semester
+            
+            enrolled_student_ids = CourseMaster.objects.filter(term=current_semester).values_list('userid_id', flat=True)
+            
+            # 상태가 '재원생', '미처리', '확인필요'인 학생 중 수강 기록이 없는 학생
+            return base_queryset.filter(
+                Q(status='재원생') | Q(status='미처리') | Q(status='확인필요')
+            ).exclude(id__in=enrolled_student_ids)
 
         if status_param:
-            # 재원생, 휴원생, 미등록, 상담중 등 일반 상태는 DB 기준으로 필터링
-            return StudentMaster.objects.filter(status=status_param)
-
-        return StudentMaster.objects.all()
-
-        return StudentMaster.objects.all()
+            return base_queryset.filter(status=status_param)
+        return base_queryset
 
     def get(self, request):
-        queryset = self.get_queryset(request)
-        serializer = self.serializer_class(queryset, many=True)
-
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-
-        print(request.data)
-
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    # def put(self, request, pk=None):
-    #     print("📥 [PUT 요청 수신] StudentMasterUpdateView")
-    #     print("📌 요청된 pk:", pk)
-    #     print("📦 요청 데이터:", request.data)
-    #
-    #     try:
-    #         student = StudentMaster.objects.get(id=pk)
-    #         print("✅ 해당 학생 객체 존재함:", student)
-    #
-    #     except StudentMaster.DoesNotExist:
-    #         print("❌ 해당 ID의 학생이 존재하지 않음:", pk)
-    #         return Response({"error": "학생을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
-    #
-    #     serializer = self.serializer_class(student, data=request.data)
-    #
-    #     if not serializer.is_valid():
-    #         print("❗ serializer 오류:", serializer.errors)
-    #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    #
-    #     instance = serializer.save()
-    #     print("💾 저장 완료:", instance)
-    #
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
+        queryset = self.get_queryset()
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
+        if page is not None:
+            serializer = self.serializer_class(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        return Response(self.serializer_class(queryset, many=True).data)
 
     def put(self, request, pk=None):
         try:
             student = StudentMaster.objects.get(id=pk)
-
         except StudentMaster.DoesNotExist:
-            return Response({"error": "학생을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
-
-        # partial=True를 추가하여 일부 필드만 업데이트 가능하게 함
+            return Response({"error": "학생을 찾을 수 없습니다."}, status=404)
         serializer = self.serializer_class(student, data=request.data, partial=True)
-
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class StudentMergeView(APIView):
+    permission_classes = [IsAdminUser]
+    authentication_classes = [JWTAuthentication]
+
+    @transaction.atomic
+    def post(self, request):
+        old_id = request.data.get('old_id') # 확인필요 학생 (기존 데이터)
+        new_id = request.data.get('new_id') # 현재 재원생 (신규 데이터)
+
+        try:
+            old_student = StudentMaster.objects.get(id=old_id)
+            new_student = StudentMaster.objects.get(id=new_id)
+
+            # 1. 수강 정보 이전 (새로운 CourseMaster를 기존 학생으로 변경)
+            CourseMaster.objects.filter(userid=new_student).update(userid=old_student)
+            
+            # 2. 기타 이력 이전
+            Attend.objects.filter(userid=new_student).update(userid=old_student)
+            History.objects.filter(userid=new_student).update(userid=old_student)
+            Enrollment.objects.filter(student=new_student).update(student=old_student)
+            AttendanceLog.objects.filter(student=new_student).update(student=old_student)
+
+            # 3. 기존 학생 정보 업데이트 (신규 데이터의 연락처 등 반영)
+            old_student.phone_parent = new_student.phone_parent
+            old_student.status = '재원생'
+            old_student.memo = f"{old_student.memo}\n[데이터통합 {datetime.now().strftime('%y%m%d')}]"
+            old_student.save()
+
+            # 4. 신규 중복 데이터 삭제
+            new_student.delete()
+
+            return Response({"message": f"{old_student.name} 학생의 데이터가 성공적으로 통합되었습니다."})
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser])
 def upload_photo(request):
     file = request.FILES.get('file')
-    master_id = request.POST.get('master_id')  # 클라이언트에서 같이 보냄
-
-    if not file or not master_id:
-        return Response({'error': 'file과 master_id가 필요합니다.'}, status=400)
-
-    # 확장자 유지
-    ext = os.path.splitext(file.name)[1]  # 예: ".jpg"
+    master_id = request.POST.get('master_id')
+    if not file or not master_id: return Response({'error': 'file/id error'}, status=400)
+    ext = os.path.splitext(file.name)[1]
     filename = f'{master_id}{ext}'
     path = default_storage.save(f'student_photos/{filename}', file)
-
     return Response({'url': default_storage.url(path)}, status=200)

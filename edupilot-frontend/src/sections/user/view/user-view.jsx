@@ -1,6 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -10,8 +9,6 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Iconify from 'src/components/iconify';
-import { fetchWithToken } from 'src/utils/auth/fetch-with-token';
-import { fFetchResponse } from 'src/utils/format-array';
 
 import UserRegisterPopover from '../user-register-popover';
 import UserInformation from '../user-information';
@@ -23,39 +20,21 @@ import UserData from '../data/user-data';
 import UserRecommendCertAward from '../data/user-recommend-cert-award';
 
 export default function UserPage() {
-  const [userData, setUserData] = useState([]);
+  const [selected, setSelected] = useState({});
   const [courseData, setCourseData] = useState([]);
   const [attendData, setAttendData] = useState([]);
   const [historyData, setHistoryData] = useState([]);
-  const [selected, setSelected] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
-
-  const navigate = useNavigate();
-
-  const loadUserData = useCallback(async () => {
-    try {
-      const response = await fetchWithToken('/api/students/', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      }, navigate);
-      const result = await response.json();
-      const row = fFetchResponse(result);
-      setUserData(row);
-    } catch (error) {
-      console.error('Failed to fetch students:', error);
-    }
-  }, [navigate]);
-
-  useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+  
+  // 신규 등록 성공 시 데이터 새로고침을 위한 트리거
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handlePopClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
 
   const handleRegisterSuccess = () => {
-    loadUserData();
+    setRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -87,8 +66,7 @@ export default function UserPage() {
         {/* Top Section: List + Basic Info */}
         <UserData 
           setSelected={setSelected} 
-          userData={userData} 
-          setUserData={setUserData} 
+          refreshTrigger={refreshTrigger}
         />
 
         <UserInformation selected={selected} courseData={courseData} />

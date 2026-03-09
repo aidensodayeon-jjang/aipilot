@@ -68,6 +68,16 @@ export default function SettingsView() {
     const formData = new FormData();
     formData.append('file', file);
 
+    // [중요] 학생 정보 업로드 시 대시보드 분석을 위해 localStorage에도 저장
+    if (type === 'students') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        localStorage.setItem('UPLOADED_CSV_DATA', e.target.result);
+        console.log('CSV data saved to localStorage for dashboard analysis');
+      };
+      reader.readAsText(file);
+    }
+
     const endpoint = type === 'students' ? '/api/import/students/' : '/api/import/timetable/';
     
     try {
@@ -140,7 +150,7 @@ export default function SettingsView() {
               <Grid xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="현재 학기 코드 (예: 2603)"
+                  label="현재 학기 코드 (예: 252603)"
                   value={semesterInfo.name}
                   onChange={(e) => setSemesterInfo({ ...semesterInfo, name: e.target.value })}
                   helperText="입력한 코드가 수강 기록의 학기 기준으로 자동 적용됩니다."

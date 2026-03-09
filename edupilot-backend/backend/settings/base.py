@@ -43,7 +43,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     '3.34.144.167',
-    'edupilot.sodayeon.co.kr'
+    'edupilot.sodayeon.co.kr',
+    'localhost',
+    '127.0.0.1',
 ]
 
 # Application definition
@@ -84,8 +86,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ORIGIN_WHITELIST = [
+CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
+    'http://localhost:3000',
+    'http://127.0.0.1:3030',
     'http://localhost:3030'
 ]
 

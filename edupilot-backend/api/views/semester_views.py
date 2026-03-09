@@ -1,10 +1,31 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny # ✅ 추가
 from ..models import AcademicSemester, SemesterStatus
 
 class AcademicSemesterView(APIView):
-    # ... (get 동일) ...
+    permission_classes = [AllowAny] # ✅ 인증 없이도 접근 가능하도록 수정
+
+    def get(self, request):
+        semester = AcademicSemester.objects.filter(is_current=True).first()
+        if not semester:
+            # 기본값 반환
+            return Response({
+                "name": "학기 정보 없음",
+                "start_date": "",
+                "end_date": "",
+                "vacation_start": "",
+                "vacation_end": ""
+            })
+        
+        return Response({
+            "name": semester.name,
+            "start_date": str(semester.start_date),
+            "end_date": str(semester.end_date),
+            "vacation_start": str(semester.vacation_start) if semester.vacation_start else "",
+            "vacation_end": str(semester.vacation_end) if semester.vacation_end else ""
+        })
 
     def post(self, request):
         name = request.data.get('name')

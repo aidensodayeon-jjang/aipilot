@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,30 +11,70 @@ import TableContainer from '@mui/material/TableContainer';
 import TablePagination from '@mui/material/TablePagination';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { fetchWithToken } from '../../../utils/auth/fetch-with-token';
 import UserTableToolbar from '../table/user-table-toolbar';
 import UserTableHead from '../table/user-table-head';
 import UserTableRow from '../table/user-table-row';
 import TableNoData from '../table/table-no-data';
-import { applyFilter, getComparator } from '../utils';
 
-export default function UserData({ setSelected, userData, setUserData }) {
+export default function UserData({ setSelected, refreshTrigger }) {
+  const [userData, setUserData] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  
   const [order, setOrder] = useState('asc');
   const [orderBy, setOrderBy] = useState('name');
   const [filterName, setFilterName] = useState('');
   const [page, setPage] = useState(0);
-  const rowsPerPage = 3;
+  const [rowsPerPage] = useState(5); // 한 페이지에 5명씩
 
   const navigate = useNavigate();
 
-  const userDataFiltered = useMemo(() => applyFilter({
-    inputData: userData,
-    comparator: getComparator(order, orderBy),
-    filterName,
-  }), [userData, order, orderBy, filterName]);
+  // 서버에서 데이터 가져오기 (검색어 + 페이지 번호 포함)
+  const fetchStudents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        search: filterName,
+        page: page + 1, // DRF는 1-based page
+        page_size: rowsPerPage,
+      });
 
-  const notFound = !userDataFiltered.length && !!filterName;
+      const response = await fetchWithToken(`/api/students/?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      }, navigate);
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        setUserData(result.results || []);
+        setTotalCount(result.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch students:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterName, page, rowsPerPage, navigate]);
+
+  // 검색어 입력 시 0.5초 대기 후 검색 (디바운스)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStudents();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [fetchStudents]);
+
+  // 외부 트리거(신규 등록 등) 발생 시 새로고침
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchStudents();
+    }
+  }, [refreshTrigger, fetchStudents]);
 
   const handleSort = (id) => {
     const isAsc = orderBy === id && order === 'asc';
@@ -64,22 +104,27 @@ export default function UserData({ setSelected, userData, setUserData }) {
     }
   };
 
+  const notFound = !userData.length && !!filterName;
+
   return (
     <Grid item xs={12} md={4.5}>
-      <Card sx={{ height: 280, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+      <Card sx={{ height: 320, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
         <Box sx={{ px: 2, pt: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>학생 검색</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>학생 검색</Typography>
+            {loading && <CircularProgress size={16} color="inherit" />}
+          </Box>
           <UserTableToolbar
             filterName={filterName}
             onFilterName={(event) => {
               setFilterName(event.target.value);
-              setPage(0);
+              setPage(0); // 검색 시 첫 페이지로 리셋
             }}
             sx={{ p: 0, minHeight: 'auto', '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem' } }}
           />
         </Box>
 
-        <TableContainer sx={{ flexGrow: 1, overflow: 'hidden', px: 1 }}>
+        <TableContainer sx={{ flexGrow: 1, overflow: 'auto', px: 1 }}>
           <Table size="small">
             <UserTableHead
               order={order}
@@ -94,28 +139,26 @@ export default function UserData({ setSelected, userData, setUserData }) {
             />
 
             <TableBody>
-              {userDataFiltered
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((row) => (
-                  <UserTableRow
-                    key={row.id}
-                    id={row.id}
-                    name={row.name}
-                    status={row.status}
-                    phone_parent={row.phone_parent}
-                    onStatusChange={handleStatusChange}
-                    handleClick={() => setSelected(row)}
-                  />
-                ))}
+              {userData.map((row) => (
+                <UserTableRow
+                  key={row.id}
+                  id={row.id}
+                  name={row.name}
+                  status={row.status}
+                  phone_parent={row.phone_parent}
+                  onStatusChange={handleStatusChange}
+                  handleClick={() => setSelected(row)}
+                />
+              ))}
               {notFound && <TableNoData query={filterName} />}
             </TableBody>
           </Table>
         </TableContainer>
 
         <TablePagination
-          rowsPerPageOptions={[]}
+          rowsPerPageOptions={[]} // 페이지 크기 고정
           component="div"
-          count={userDataFiltered.length}
+          count={totalCount}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={(e, p) => setPage(p)}
@@ -128,6 +171,5 @@ export default function UserData({ setSelected, userData, setUserData }) {
 
 UserData.propTypes = {
   setSelected: PropTypes.func,
-  userData: PropTypes.array,
-  setUserData: PropTypes.func,
+  refreshTrigger: PropTypes.number,
 };

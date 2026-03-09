@@ -1,5 +1,5 @@
 from django.db.models import Count
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import AllowAny # ✅ 수정
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -9,7 +9,7 @@ from api.models import StudentMaster
 
 
 class DashboardView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [AllowAny] # ✅ 수정
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):

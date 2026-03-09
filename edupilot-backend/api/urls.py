@@ -11,7 +11,7 @@ from api.views.message_views import MessageView
 from api.views.portfolio import portfolio_student, portfolio_announcement
 from api.views.slack_views import SlackLogView
 from api.views.student_course_views import StudentCourseView
-from api.views.student_master_views import StudentMasterView
+from api.views.student_master_views import StudentMasterView, StudentMergeView
 from api.views.student_master_views import upload_photo
 from api.views.status_views import StudentStatusView
 from api.views.user_views import UserLoginView, UserRegisterView
@@ -47,6 +47,7 @@ urlpatterns = [
     path("students/", StudentMasterView.as_view()),
     path("student/register/", StudentMasterView.as_view()),
     path("student/update/<str:pk>/", StudentMasterView.as_view()),
+    path("student/merge/", StudentMergeView.as_view()), # 추가
     path("student/upload_photo/", upload_photo),
 
     path("student/course/", StudentCourseView.as_view()),
