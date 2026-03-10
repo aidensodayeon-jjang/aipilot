@@ -5,7 +5,8 @@ from rest_framework.permissions import AllowAny # ✅ 추가
 from ..models import AcademicSemester, SemesterStatus
 
 class AcademicSemesterView(APIView):
-    permission_classes = [AllowAny] # ✅ 인증 없이도 접근 가능하도록 수정
+    permission_classes = [AllowAny]
+    authentication_classes = [] # ✅ 인증 클래스 비우기 추가
 
     def get(self, request):
         semester = AcademicSemester.objects.filter(is_current=True).first()

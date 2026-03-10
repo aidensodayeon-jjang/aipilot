@@ -24,8 +24,10 @@ export default function UserSlackData({ selected }) {
 
   const fetchHistoryData = useCallback(() => {
     if (selected?.name) {
+      // 이름 끝에 붙은 'B', 'C' 등을 제거하여 슬랙 검색이 잘 되도록 함
+      const cleanName = selected.name.replace(/[A-Z]$/, '');
       fetchWithToken(
-        `/api/slacklog/?q=${selected.name}`,
+        `/api/slacklog/?q=${cleanName}`,
         {
           method: 'GET',
           headers: {

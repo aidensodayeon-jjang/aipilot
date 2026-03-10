@@ -20,7 +20,7 @@ import { fetchWithToken } from '../../../utils/auth/fetch-with-token';
 // ----------------------------------------------------------------------
 
 export default function SettingsView() {
-  const [loading, setLoading] = useState({ students: false, timetable: false, semester: false });
+  const [loading, setLoading] = useState({ students: false, timetable: false, semester: false, slack: false });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [semesterInfo, setSemesterInfo] = useState({
     name: '2026년 3월 봄학기',
@@ -36,7 +36,10 @@ export default function SettingsView() {
   useEffect(() => {
     const loadSemester = async () => {
       try {
-        const response = await fetchWithToken('/api/semester/', {}, navigate);
+        const response = await fetch('/api/semester/', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
         const data = await response.json();
         if (data.name) {
           setSemesterInfo(data);
@@ -120,6 +123,28 @@ export default function SettingsView() {
       setStatus({ type: 'error', message: '오류 발생' });
     } finally {
       setLoading({ ...loading, semester: false });
+    }
+  };
+
+  const handleSlackSync = async () => {
+    setLoading({ ...loading, slack: true });
+    setStatus({ type: '', message: '' });
+
+    try {
+      const response = await fetchWithToken('/api/slack/sync/', {
+        method: 'POST',
+      }, navigate);
+
+      const result = await response.json();
+      if (response.ok) {
+        setStatus({ type: 'success', message: result.message });
+      } else {
+        setStatus({ type: 'error', message: result.error || '동기화 실패' });
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: '서버 통신 오류가 발생했습니다.' });
+    } finally {
+      setLoading({ ...loading, slack: false });
     }
   };
 
@@ -256,6 +281,18 @@ export default function SettingsView() {
             onUpload={(e) => handleFileUpload(e, 'other')}
           />
         </Grid>
+
+        <Grid xs={12} md={4}>
+          <ActionCard
+            title="슬랙 메시지 동기화"
+            description="슬랙 채널의 최신 메시지를 DB로 동기화합니다."
+            icon="solar:chat-round-dots-bold-duotone"
+            color="#4a154b"
+            loading={loading.slack}
+            onAction={handleSlackSync}
+            buttonText="동기화 시작"
+          />
+        </Grid>
       </Grid>
     </Container>
   );
@@ -282,6 +319,37 @@ function UploadCard({ title, description, icon, color, loading, onUpload }) {
     </Card>
   );
 }
+
+function ActionCard({ title, description, icon, color, loading, onAction, buttonText }) {
+  return (
+    <Card sx={{ p: 4, height: '100%', borderRadius: '16px', border: '1px solid #f1f5f9', textAlign: 'center', transition: '0.3s', '&:hover': { boxShadow: '0 12px 24px rgba(0,0,0,0.05)' } }}>
+      <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: alpha(color, 0.1), color, display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3 }}>
+        <Iconify icon={icon} width={32} />
+      </Box>
+      <Typography variant="h6" sx={{ color: '#1e293b', mb: 1 }}>{title}</Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, minHeight: 40 }}>{description}</Typography>
+      
+      <Button
+        variant="contained"
+        disabled={loading}
+        onClick={onAction}
+        sx={{ bgcolor: color, color: 'white', px: 4, py: 1.5, borderRadius: 1.5, fontWeight: 700, '&:hover': { bgcolor: alpha(color, 0.8) } }}
+      >
+        {loading ? <CircularProgress size={24} color="inherit" /> : buttonText}
+      </Button>
+    </Card>
+  );
+}
+
+ActionCard.propTypes = {
+  title: PropTypes.string,
+  description: PropTypes.string,
+  icon: PropTypes.string,
+  color: PropTypes.string,
+  loading: PropTypes.bool,
+  onAction: PropTypes.func,
+  buttonText: PropTypes.string,
+};
 
 UploadCard.propTypes = {
   title: PropTypes.string,

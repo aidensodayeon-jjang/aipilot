@@ -68,6 +68,7 @@ class StudentCourseSerializer(serializers.ModelSerializer):
 
 
 class AttendSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True) # ✅ 명시적 추가
     name = serializers.CharField(source="userid.name", read_only=True)
     phone_parent = serializers.CharField(source="userid.phone_parent", read_only=True)
 

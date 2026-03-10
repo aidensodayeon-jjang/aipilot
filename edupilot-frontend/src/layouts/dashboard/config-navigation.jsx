@@ -18,11 +18,6 @@ const navConfig = [
     icon: icon('ic_user'),
   },
   {
-    title: '상담 관리',
-    path: '/counsel',
-    icon: icon('ic_feed'),
-  },
-  {
     title: '출결/보강 관리',
     path: '/attend',
     icon: icon('ic_check'),
@@ -38,14 +33,19 @@ const navConfig = [
     icon: icon('ic_class'),
   },
   {
-    title: '업무 관리',
-    path: '/login',
-    icon: icon('ic_lock'),
+    title: '상담 관리',
+    path: '/counsel',
+    icon: icon('ic_feed'),
   },
   {
     title: '시스템 설정',
     path: '/settings',
     icon: icon('ic_setting'),
+  },
+  {
+    title: '업무 관리',
+    path: '/login',
+    icon: icon('ic_lock'),
   },
 ];
 

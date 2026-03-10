@@ -61,6 +61,19 @@ class StudentMasterView(APIView):
             return paginator.get_paginated_response(serializer.data)
         return Response(self.serializer_class(queryset, many=True).data)
 
+    def post(self, request):
+        # master_id 자동 생성 (전화번호 기반 또는 UUID)
+        data = request.data.copy()
+        if not data.get('master_id'):
+            # 학부모 전화번호를 master_id로 사용 (기존 관례)
+            data['master_id'] = data.get('phone_parent')
+
+        serializer = self.serializer_class(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     def put(self, request, pk=None):
         try:
             student = StudentMaster.objects.get(id=pk)

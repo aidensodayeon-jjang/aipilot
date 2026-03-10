@@ -8,6 +8,8 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import LinearProgress from '@mui/material/LinearProgress';
+import { alpha } from '@mui/material/styles';
 
 import Iconify from 'src/components/iconify';
 
@@ -16,7 +18,6 @@ import AppScheduleTimeline from '../app-order-timeline';
 import AppWidgetSummary from '../app-widget-summary';
 import AppTrafficBySite from '../app-traffic-by-site';
 import AppLectureStatus from '../app-lecture-status';
-import { fetchWithToken } from '../../../utils/auth/fetch-with-token';
 import { processData } from '../../../utils/dataProcessor';
 import NewDashboard from '../new-dashboard/NewDashboard';
 
@@ -32,6 +33,10 @@ export default function AppView() {
   const [totalUnregCount, setTotalUnregCount] = useState(0);
   const [totalPaidCount, setTotalPaidCount] = useState(0);
   const [totalUnpaidCount, setTotalUnpaidCount] = useState(0);
+  const [totalNewCount, setTotalNewCount] = useState(0);
+  const [weekInfo, setWeekInfo] = useState('');
+  const [dayInfo, setDayInfo] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
 
   const navigate = useNavigate();
 
@@ -45,15 +50,14 @@ export default function AppView() {
     loadDashboardData();
 
     // 기존 대시보드용 데이터 로드
-    fetchWithToken(
+    fetch(
       `/api/dashboard/`,
       {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      },
-      navigate
+      }
     )
       .then((response) => response.json())
       .then((result) => {
@@ -64,6 +68,10 @@ export default function AppView() {
         setTotalUnregCount(result.total_unreg_count || 0);
         setTotalPaidCount(result.total_paid_count || 0);
         setTotalUnpaidCount(result.total_unpaid_count || 0);
+        setTotalNewCount(result.new_student_count || 0);
+        setWeekInfo(result.week_info || '');
+        setDayInfo(result.day_info || '');
+        setProgressPercent(result.progress_percent || 0);
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
@@ -115,7 +123,29 @@ export default function AppView() {
               sx={{ typography: 'subtitle1', fontWeight: 700, px: 3, py: 2 }} 
             />
           </Tabs>
-          <Box sx={{ pr: 2 }}>
+          <Box sx={{ pr: 2, textAlign: 'right', minWidth: 200 }}>
+             <Typography variant="subtitle2" sx={{ color: '#6366f1', fontWeight: 800 }}>
+               {weekInfo} ({dayInfo})
+             </Typography>
+             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, my: 0.5 }}>
+               <LinearProgress 
+                 variant="determinate" 
+                 value={progressPercent} 
+                 sx={{ 
+                   flexGrow: 1, 
+                   height: 6, 
+                   borderRadius: 3,
+                   bgcolor: (theme) => alpha(theme.palette.grey[500], 0.12),
+                   '& .MuiLinearProgress-bar': {
+                     bgcolor: '#6366f1',
+                     borderRadius: 3,
+                   }
+                 }} 
+               />
+               <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                 {progressPercent}%
+               </Typography>
+             </Box>
              <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 600, textTransform: 'uppercase' }}>
                Last Updated: {new Date().toLocaleDateString()}
              </Typography>
@@ -134,6 +164,7 @@ export default function AppView() {
             unregCount: totalUnregCount,
             paidCount: totalPaidCount,
             unpaidCount: totalUnpaidCount,
+            newCount: totalNewCount, // ✅ 누락되었던 이 부분을 추가합니다.
           }}
         />
       ) : (
@@ -187,7 +218,7 @@ export default function AppView() {
             <AppWidgetSummary
               title="이번 달 신규 등록"
               subTitle="this term"
-              total="19"
+              total={`${totalNewCount}`}
               icon={<Iconify icon="solar:user-plus-bold-duotone" width={24} color="text.secondary" />}
               trend={{ value: '12%', label: 'target achievement', color: 'success' }}
               link="/students/new"

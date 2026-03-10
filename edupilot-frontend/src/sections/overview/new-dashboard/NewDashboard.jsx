@@ -81,7 +81,12 @@ export default function NewDashboard({ data, apiStats }) {
       <Grid container spacing={3}>
         {/* Row 1: Core Growth & Operations */}
         <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="이번 달 신규 등록" total={`${stats.newStudents}건`} icon="solar:user-plus-bold-duotone" color="#6366f1" />
+          <SummaryCard 
+            title="이번 달 신규 등록" 
+            total={`${apiStats.newCount || 0}명`} // ✅ 백엔드 실시간 데이터 사용
+            icon="solar:user-plus-bold-duotone" 
+            color="#6366f1" 
+          />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
           <SummaryCard title="총 재원생" total={`${apiStats.userCount}명`} icon="solar:users-group-two-rounded-bold-duotone" color="#3b82f6" />
@@ -129,7 +134,7 @@ export default function NewDashboard({ data, apiStats }) {
               />
             </Grid>
             <Grid xs={12}>
-              <RecentInquiries data={data} />
+              <UnpaidStatus data={data} />
             </Grid>
           </Grid>
         </Grid>
@@ -156,6 +161,7 @@ NewDashboard.propTypes = {
     unregCount: PropTypes.number,
     paidCount: PropTypes.number,
     unpaidCount: PropTypes.number,
+    newCount: PropTypes.number, // ✅ 추가
   }),
 };
 
@@ -287,34 +293,48 @@ GradeAnalysisCard.propTypes = {
   stats: PropTypes.array,
 };
 
-function RecentInquiries({ data }) {
-  const recent = data.slice(0, 5);
+function UnpaidStatus({ data }) {
+  const unpaidStudents = data.filter((student) => student.paymentStatus === '미결제');
+  const totalUnpaidCount = unpaidStudents.length;
+
   return (
     <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
       <Typography variant="h6" sx={{ mb: 2, color: '#1e293b' }}>
-        최근 등록 현황
+        미결제 현황 (총 {totalUnpaidCount}명)
       </Typography>
       <Stack spacing={2}>
-        {recent.map((student, index) => (
-          <Stack key={index} direction="row" alignItems="center" justifyContent="space-between" sx={{ pb: 1, borderBottom: index !== recent.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-            <Box>
-              <Typography variant="subtitle2" sx={{ color: '#1e293b' }}>{student.studentName}</Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.school} / {student.grade}</Typography>
-            </Box>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="subtitle2" sx={{ color: student.paymentStatus === '결제완료' ? '#10b981' : '#f43f5e' }}>
-                {student.paymentStatus}
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.course}</Typography>
-            </Box>
-          </Stack>
-        ))}
+        {unpaidStudents.length > 0 ? (
+          unpaidStudents.slice(0, 10).map((student, index) => (
+            <Stack 
+              key={index} 
+              direction="row" 
+              alignItems="center" 
+              justifyContent="space-between" 
+              sx={{ pb: 1, borderBottom: index !== Math.min(unpaidStudents.length, 10) - 1 ? '1px solid #f1f5f9' : 'none' }}
+            >
+              <Box>
+                <Typography variant="subtitle2" sx={{ color: '#1e293b' }}>{student.studentName}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.school} / {student.grade}</Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="subtitle2" sx={{ color: '#f43f5e', fontWeight: 700 }}>
+                  ₩{student.paymentAmount?.toLocaleString()}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.course}</Typography>
+              </Box>
+            </Stack>
+          ))
+        ) : (
+          <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
+            미결제 학생이 없습니다.
+          </Typography>
+        )}
       </Stack>
     </Card>
   );
 }
 
-RecentInquiries.propTypes = {
+UnpaidStatus.propTypes = {
   data: PropTypes.array,
 };
 

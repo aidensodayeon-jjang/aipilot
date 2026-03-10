@@ -63,6 +63,18 @@ export default function UserAttend({ openFilter, setOpenFilter, selected, fetchA
 
   useEffect(() => {
     setValue('userid', selected.id);
+    
+    // 현재 학기 정보 로드 및 기본값 설정
+    fetch('/api/semester/')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.name) {
+          setValue('term', data.name);
+        }
+      })
+      .catch(() => {
+        setValue('term', '202603'); // 기본값
+      });
   }, [selected.id, setValue]);
 
   const renderTerm = (
@@ -73,7 +85,7 @@ export default function UserAttend({ openFilter, setOpenFilter, selected, fetchA
         register={register}
         errors={errors}
         name="term"
-        label="학기(6자리)"
+        label="학기"
         required
       />
     </Stack>
@@ -140,12 +152,14 @@ export default function UserAttend({ openFilter, setOpenFilter, selected, fetchA
         register={register}
         errors={errors}
         name="res_date"
-        label="보강 예약일"
-        type="date"
+        label="보강 예약일시"
+        type="datetime-local"
         InputLabelProps={{
           shrink: true,
         }}
-        defaultValue={new Date().toISOString().slice(0, 10)}
+        defaultValue={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16)}
         fullWidth
       />
 

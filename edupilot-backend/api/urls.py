@@ -9,7 +9,7 @@ from api.views.dashboard_views import DashboardView
 from api.views.history_views import HistoryView
 from api.views.message_views import MessageView
 from api.views.portfolio import portfolio_student, portfolio_announcement
-from api.views.slack_views import SlackLogView
+from api.views.slack_views import SlackLogView, SyncSlackView
 from api.views.student_course_views import StudentCourseView
 from api.views.student_master_views import StudentMasterView, StudentMergeView
 from api.views.student_master_views import upload_photo
@@ -39,6 +39,7 @@ urlpatterns = [
     path("attend/", AttendView.as_view()),
     path("history/", HistoryView.as_view()),
     path("slacklog/", SlackLogView.as_view()),
+    path("slack/sync/", SyncSlackView.as_view()),
 
     path("recommend-items/", RecommendedItemView.as_view()),
     path("teacher-feedback/", TeacherFeedbackView.as_view()),

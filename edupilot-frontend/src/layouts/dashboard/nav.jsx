@@ -44,9 +44,13 @@ export default function Nav({ openNav, onCloseNav }) {
         { title: '⚠️ 미처리', path: '/students/unprocessed' },
     ];
 
-    // 기존 메뉴에서 상담 관리만 제거 (원생 관리는 유지)
-    const newNavConfig = navConfigData.filter(item => item.title !== '상담 관리');
+    // 기존 메뉴에서 상담 관리만 제거
+    const filteredNavConfig = navConfigData.filter(item => item.title !== '상담 관리');
     
+    // '원생 관리' 찾아서 제거 (나중에 원하는 위치에 넣기 위함)
+    const userMenu = filteredNavConfig.find(item => item.title === '원생 관리');
+    const finalNavConfig = filteredNavConfig.filter(item => item.title !== '원생 관리');
+
     const studentStatusMenu = {
         title: '학생 현황',
         path: '/students',
@@ -54,10 +58,16 @@ export default function Nav({ openNav, onCloseNav }) {
         children: studentStatusSubMenu,
     };
 
-    // '학생 현황'을 대시보드(0) 바로 다음인 인덱스 1에 삽입
-    // 기존 '원생 관리'는 그 뒤로 밀려나거나 유지됨
-    newNavConfig.splice(1, 0, studentStatusMenu);
-    setNavConfig(newNavConfig);
+    // 순서 조정: [대시보드] -> [원생 관리] -> [학생 현황] -> [나머지]
+    // 1. 대시보드 뒤에 '원생 관리' 삽입 (인덱스 1)
+    if (userMenu) {
+        finalNavConfig.splice(1, 0, userMenu);
+    }
+    
+    // 2. 그 뒤에 '학생 현황' 삽입 (인덱스 2)
+    finalNavConfig.splice(2, 0, studentStatusMenu);
+    
+    setNavConfig(finalNavConfig);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
