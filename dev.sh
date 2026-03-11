@@ -11,7 +11,7 @@ NC='\033[0m'
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BACKEND_DIR="$BASE_DIR/edupilot-backend"
 FRONTEND_DIR="$BASE_DIR/edupilot-frontend"
-KIOSK_DIR="/Users/aiden/Desktop/project/timetable/dlab-attendance"
+KIOSK_DIR="$BASE_DIR/edupilot-kiosk"
 
 echo -e "${CYAN}=======================================${NC}"
 echo -e "${CYAN}    EduPilot 아키텍처 정밀 교정 실행기    ${NC}"
