@@ -143,6 +143,129 @@ class StudentImportView(APIView):
 
 class TimetableImportView(APIView):
     parser_classes = [MultiPartParser]
+
     def post(self, request):
-        # (시간표 임포트 로직은 유지 - 생략 가능하지만 파일 전체를 쓰므로 포함)
-        return Response({"message": "시간표 업데이트 완료"}) # 실제 구현부 유지됨
+        try:
+            file = request.FILES.get('file')
+            if not file: return Response({"error": "No file uploaded"}, status=400)
+
+            try:
+                content = file.read()
+                try:
+                    decoded_file = content.decode('utf-8-sig')
+                except UnicodeDecodeError:
+                    decoded_file = content.decode('cp949')
+            except Exception as e: return Response({"error": f"Encoding error: {str(e)}"}, status=400)
+
+            io_string = io.StringIO(decoded_file)
+            reader = csv.reader(io_string)
+            rows = list(reader)
+
+            # 현재 학기 정보 가져오기
+            current_semester_obj = SemesterStatus.objects.first()
+            current_semester = current_semester_obj.current_semester if current_semester_obj else datetime.now().strftime('%y%m')
+
+            success_count = 0
+            current_day = "SAT" # 기본값 (첫 섹션)
+            
+            with transaction.atomic():
+                CourseClass.objects.all().delete()
+
+                for i, row in enumerate(rows):
+                    if not row or not any(row): continue
+                    
+                    # 1. 요일 감지 (TUE, WED, THU, FRI, SAT, SUN 등)
+                    first_cell = row[0].strip().upper()
+                    if first_cell in ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
+                        current_day = first_cell[:3]
+                        continue
+
+                    # 2. 시간대 행 감지 (예: 9:00 ~ 11:00)
+                    if '~' in row[0]:
+                        time_range = row[0].strip()
+                        # '9:00 ~ 11:00' -> '09:00'
+                        try:
+                            start_time_str = time_range.split('~')[0].strip()
+                            if ':' in start_time_str:
+                                h, m = start_time_str.split(':')
+                                start_time_obj = f"{int(h):02d}:{int(m):02d}"
+                            else:
+                                start_time_obj = "09:00"
+                        except:
+                            start_time_obj = "09:00"
+
+                        # 과목명 행
+                        for col_idx in range(1, len(row)):
+                            subject = row[col_idx].strip()
+                            if subject and subject not in ['1','2','3','4','5','6','7','8','MS']:
+                                room = str(col_idx)
+                                
+                                teacher = ""
+                                if i + 2 < len(rows):
+                                    if "담당연구원" in rows[i+2][0] or "선생님" in rows[i+2][0]:
+                                        teacher = rows[i+2][col_idx].strip()
+
+                                # 요일 변환 (SAT -> Saturday)
+                                day_map_full = {
+                                    'MON': 'Monday', 'TUE': 'Tuesday', 'WED': 'Wednesday',
+                                    'THU': 'Thursday', 'FRI': 'Friday', 'SAT': 'Saturday', 'SUN': 'Sunday'
+                                }
+                                full_day = day_map_full.get(current_day, 'Saturday')
+
+                                # 1. 수업 생성
+                                # 중복 방지를 위해 class_code 생성 (학기-요일-방-시간)
+                                class_code = f"{current_semester}-{current_day}-{room}-{start_time_obj.replace(':','')}"
+                                
+                                course_class, created = CourseClass.objects.update_or_create(
+                                    class_code=class_code,
+                                    defaults={
+                                        'subject_name': subject,
+                                        'day_of_week': full_day,
+                                        'start_time': start_time_obj,
+                                        'teacher_name': teacher,
+                                        'classroom': room,
+                                    }
+                                )
+                                
+                                # 2. 학생 배정 로직 고도화 (Enrollment)
+                                Enrollment.objects.filter(course_class=course_class).delete()
+                                
+                                # 요일 한글 글자 (Monday -> 월)
+                                kor_day_char = {'Monday': '월', 'Tuesday': '화', 'Wednesday': '수', 'Thursday': '목', 'Friday': '금', 'Saturday': '토', 'Sunday': '일'}.get(full_day)
+                                
+                                # 1) '재원생' 상태인 학생만 필터링
+                                # 2) 과목명이 포함되어 있고
+                                # 3) 수강 시간(time)에 해당 요일과 '시간'이 모두 포함되어야 함 (중복 방지)
+                                # 예: subject='DM103-1', time='토요일 11:00'
+                                
+                                # 과목명에서 핵심 키워드 추출 (예: 'DM103-1(1:1)' -> 'DM103-1')
+                                base_subject = subject.split('(')[0].strip()
+                                
+                                students_in_course = CourseMaster.objects.filter(
+                                    userid__status='재원생', # ✅ 재원생 필터
+                                    term=current_semester
+                                ).filter(
+                                    Q(subject__icontains=base_subject)
+                                ).filter(
+                                    Q(time__icontains=kor_day_char)
+                                )
+                                
+                                for cm in students_in_course:
+                                    # 시간까지 체크 (예: '11:00' 이 cm.time에 있는지)
+                                    # DB의 start_time_obj는 '09:00' 형태, cm.time은 '토요일 09:00' 형태
+                                    target_time = start_time_obj.replace('09:00', '9:00') # 9:00와 09:00 모두 대응
+                                    
+                                    if start_time_obj in str(cm.time) or target_time in str(cm.time):
+                                        Enrollment.objects.get_or_create(
+                                            student=cm.userid,
+                                            course_class=course_class
+                                        )
+
+                                success_count += 1
+
+            return Response({"message": f"{success_count}개의 수업이 시간표에 등록되었습니다."})
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=500)

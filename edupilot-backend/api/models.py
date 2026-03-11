@@ -269,12 +269,17 @@ class AttendanceLog(models.Model):
         ('Kiosk', '키오스크'),
         ('Manual', '수동'),
     )
+    STATUS_CHOICES = (
+        ('present', '출석'),
+        ('absent', '결석'),
+    )
 
     student = models.ForeignKey(StudentMaster, on_delete=models.SET_NULL, null=True, related_name='attendance_logs')
     course_class = models.ForeignKey(CourseClass, on_delete=models.SET_NULL, null=True, related_name='attendance_logs')
-    check_in_time = models.DateTimeField(auto_now_add=True)
+    check_in_time = models.DateTimeField() # auto_now_add 제거
     method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='Kiosk')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='present') # ✅ 추가
     notification_sent = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.student.name if self.student else 'Unknown'} - {self.check_in_time}"
+        return f"{self.student.name if self.student else 'Unknown'} - {self.status} ({self.check_in_time})"

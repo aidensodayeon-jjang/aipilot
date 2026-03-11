@@ -83,10 +83,44 @@ export default function ScheduleView() {
   };
 
   const handleModalAction = async (action) => {
-    // API 연동 로직 (출석/결석/취소 처리)
-    console.log(`Action: ${action} for student ${modalState.student.name}`);
-    setModalState({ ...modalState, isOpen: false });
-    fetchScheduleData(); // 데이터 새로고침
+    if (!modalState.student || !modalState.classInfo) {
+      console.error('Student or class information is missing');
+      return;
+    }
+
+    const { student, classInfo } = modalState;
+
+    try {
+      if (action === 'sms') {
+        alert(`${student.name} 학생 학부모님께 출결 문자를 발송합니다.`);
+        return;
+      }
+
+      // 출석, 결석, 취소 처리
+      const response = await fetch('/api/schedule/logs/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          student_id: student.id,
+          class_id: classInfo.classId,
+          action,
+          date: selectedDate.toISOString().split('T')[0], // ✅ 선택된 날짜 전송
+        }),
+      });
+
+      if (response.ok) {
+        setModalState((prev) => ({ ...prev, isOpen: false }));
+        fetchScheduleData(); // 목록 새로고침
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        alert(`처리 실패: ${errorData.error || '알 수 없는 오류'}`);
+      }
+    } catch (error) {
+      console.error('Failed to process attendance:', error);
+      alert('서버 통신 중 오류가 발생했습니다.');
+    }
   };
 
   const getSubjectColor = (className) => {
