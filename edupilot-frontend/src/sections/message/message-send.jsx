@@ -94,19 +94,15 @@ export default function MsgSend() {
   };
 
   const handleSend = async () => {
-    const sender = localStorage.getItem('SOLAPI_CALL_ID');
-    if (!sender) {
-      setStatus({ type: 'error', message: '시스템 설정에서 발신번호를 먼저 등록해주세요.' });
-      return;
-    }
-
+    const sender = localStorage.getItem('SOLAPI_CALL_ID') || '';
+    
     setSending(true);
     setStatus({ type: '', message: '' });
 
     const payload = {
       content,
       phoneNums: recipients.map(r => r.phone),
-      sender,
+      sender, // 비어있으면 백엔드 config.ini의 call_id 사용
     };
 
     try {

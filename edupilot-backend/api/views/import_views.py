@@ -57,7 +57,10 @@ class StudentImportView(APIView):
             new_count = 0
             
             with transaction.atomic():
+                # 1. 기존 재원생을 미처리로 변경 (학기 전환 대비)
                 StudentMaster.objects.filter(status='재원생').update(status='미처리')
+                
+                # 2. 이번 학기의 기존 수강 기록 삭제 (중복 방지)
                 CourseMaster.objects.filter(term=current_semester).delete()
 
                 for row in rows:
@@ -97,10 +100,13 @@ class StudentImportView(APIView):
                     else:
                         is_new_student = True
                         duplicates = StudentMaster.objects.filter(name=name).exclude(status='재원생')
-                        target_id = phone_parent or f"new-{datetime.now().strftime('%H%M%S')}"
+                        
+                        # master_id 생성 로직 개선 (중복 방지 강화)
+                        base_id = phone_parent if phone_parent and len(phone_parent) > 5 else name
+                        target_id = base_id
                         counter = 1
                         while StudentMaster.objects.filter(master_id=target_id).exists():
-                            target_id = f"{phone_parent or 'new'}-{counter}"
+                            target_id = f"{base_id}-{counter}"
                             counter += 1
                         
                         student = StudentMaster.objects.create(
@@ -124,10 +130,15 @@ class StudentImportView(APIView):
                         )
                     success_count += 1
 
-                # 3. 신규 인원 수를 SemesterStatus에 영구 저장
+                # 3. 신규 인원 수를 SemesterStatus에 영구 저장 (객체가 없을 경우 생성)
                 if current_semester_obj:
                     current_semester_obj.new_count = new_count
                     current_semester_obj.save()
+                else:
+                    SemesterStatus.objects.create(
+                        current_semester=current_semester,
+                        new_count=new_count
+                    )
 
             return Response({
                 "message": f"데이터 처리가 완료되었습니다. (총 {success_count}명, 신규 {new_count}명)",

@@ -5,102 +5,79 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-# 프로젝트 경로 설정
 BASE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BACKEND_DIR="$BASE_DIR/edupilot-backend"
 FRONTEND_DIR="$BASE_DIR/edupilot-frontend"
-KIOSK_DIR="/Users/aiden/Desktop/프로젝트/timetable/dlab-attendance"
+KIOSK_DIR="/Users/aiden/Desktop/project/timetable/dlab-attendance"
 
-echo -e "${BLUE}=======================================${NC}"
-echo -e "${BLUE}       EduPilot 통합 서비스 시작         ${NC}"
-echo -e "${BLUE}=======================================${NC}"
+echo -e "${CYAN}=======================================${NC}"
+echo -e "${CYAN}    EduPilot 아키텍처 정밀 교정 실행기    ${NC}"
+echo -e "${CYAN}=======================================${NC}"
 
-# 포트 점유 확인 및 정리 함수
-check_port() {
-    local port=$1
-    local name=$2
-    local pid=$(lsof -ti :$port)
-    if [ ! -z "$pid" ]; then
-        echo -e "${YELLOW}[Warning]${NC} $name($port) 포트가 이미 사용 중입니다. (PID: $pid)"
-        read -p "기존 프로세스를 종료하고 다시 시작할까요? (y/n): " confirm
-        if [[ $confirm == [yY] ]]; then
-            kill -9 $pid
-            echo -e "${GREEN}[Success]${NC} 기존 프로세스를 종료했습니다."
-        else
-            echo -e "${RED}[Error]${NC} 포트가 이미 사용 중입니다. 실행을 중단합니다."
-            exit 1
-        fi
-    fi
-}
+# 1. 아키텍처 확인 및 경로 강제
+ARCH_NAME=$(node -p "process.arch")
+IS_ROSETTA=$(sysctl -in sysctl.proc_translated)
 
-# 1. 포트 확인
-check_port 8000 "Backend"
-check_port 3030 "Frontend"
-check_port 3001 "Kiosk"
-
-# 2. 백엔드 준비
-echo -e "\n${GREEN}[1/3] 백엔드(Django) 준비 중...${NC}"
-cd "$BACKEND_DIR"
-if [ ! -d ".venv" ]; then
-    echo -e "${YELLOW}[Info]${NC} 가상환경이 없습니다. 생성을 시도합니다..."
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install -r requirements.txt
+echo -e "${BLUE}현재 아키텍처 :${NC} darwin-$ARCH_NAME"
+if [ "$IS_ROSETTA" = "1" ]; then
+    echo -e "${RED}[경고] 현재 터미널이 Rosetta(인텔 모드)로 실행 중입니다!${NC}"
+    echo -e "${YELLOW}가장 좋은 방법은 터미널 정보창에서 'Rosetta를 사용하여 열기'를 끄는 것입니다.${NC}"
 fi
 
-# 3. 프론트엔드 준비
-echo -e "${GREEN}[2/3] 프론트엔드(React) 준비 중...${NC}"
+# M1 전용 경로 최우선 설정
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# 2. 포트 정리
+for port in 8000 3030 3015; do
+    pid=$(lsof -ti :$port)
+    if [ ! -z "$pid" ]; then kill -9 $pid 2>/dev/null; fi
+done
+
+# 3. 키오스크(3015) 긴급 교정
+if [ -d "$KIOSK_DIR" ]; then
+    echo -e "${YELLOW}[Step 1] 키오스크 네이티브 모듈 교정 중...${NC}"
+    cd "$KIOSK_DIR"
+    # lightningcss가 요구하는 아키텍처 바이너리 강제 설치
+    npm install --platform=darwin --arch=$ARCH_NAME lightningcss --save-dev --force > /dev/null 2>&1
+    rm -rf .next
+fi
+
+# 4. 프론트엔드(3030) esbuild 교정
+echo -e "${YELLOW}[Step 2] 프론트엔드 esbuild 교정 중...${NC}"
 cd "$FRONTEND_DIR"
-if [ ! -d "node_modules" ]; then
-    echo -e "${YELLOW}[Info]${NC} 프론트엔드 의존성 설치 중..."
-    npm install
-fi
+npm install esbuild --save-dev --force > /dev/null 2>&1
 
-# 4. 키오스크 준비
-echo -e "${GREEN}[3/3] 키오스크(Next.js) 준비 중...${NC}"
-cd "$KIOSK_DIR"
-if [ ! -d "node_modules" ]; then
-    echo -e "${YELLOW}[Info]${NC} 키오스크 의존성 설치 중..."
-    npm install
-fi
-
-# 5. 서버 동시 실행 및 로그 관리
-echo -e "\n${BLUE}=======================================${NC}"
-echo -e "${GREEN}모든 서버를 실행합니다. (종료: Ctrl+C)${NC}"
-echo -e "${GREEN}백엔드: http://localhost:8000${NC}"
-echo -e "${GREEN}프론트엔드: http://localhost:3030${NC}"
-echo -e "${GREEN}키오스크: http://localhost:3001${NC}"
-echo -e "${BLUE}=======================================${NC}\n"
-
-# 종료 처리 함수
+# 5. 종료 처리
 cleanup() {
-    echo -e "\n\n${YELLOW}모든 서버를 종료하는 중입니다...${NC}"
-    [ ! -z "$BACKEND_PID" ] && kill $BACKEND_PID 2>/dev/null
-    [ ! -z "$FRONTEND_PID" ] && kill $FRONTEND_PID 2>/dev/null
-    [ ! -z "$KIOSK_PID" ] && kill $KIOSK_PID 2>/dev/null
-    echo -e "${GREEN}종료 완료.${NC}"
+    echo -e "\n\n${RED}모든 서버를 종료합니다...${NC}"
+    kill $(jobs -p) 2>/dev/null
     exit
 }
-
 trap cleanup SIGINT
 
-# 백엔드 실행
+# 6. 백엔드 실행
+echo -e "\n${BLUE}[Step 3] 백엔드(Django) 시작 중...${NC}"
 cd "$BACKEND_DIR"
-./.venv/bin/python manage.py runserver 0.0.0.0:8000 --settings=backend.settings.local > backend.log 2>&1 &
-BACKEND_PID=$!
+source .venv/bin/activate
+./.venv/bin/python manage.py runserver 0.0.0.0:8000 --settings=backend.settings.local &
 
-# 프론트엔드 실행
+# 7. 프론트엔드 실행
+echo -e "${GREEN}[Step 4] 프론트엔드(React) 시작 중...${NC}"
 cd "$FRONTEND_DIR"
-npm run dev > frontend.log 2>&1 &
-FRONTEND_PID=$!
+./node_modules/.bin/vite --port 3030 --host 0.0.0.0 &
 
-# 키오스크 실행
-cd "$KIOSK_DIR"
-PORT=3001 npm run dev > kiosk.log 2>&1 &
-KIOSK_PID=$!
+# 8. 키오스크 실행
+if [ -d "$KIOSK_DIR" ]; then
+    echo -e "${CYAN}[Step 5] 키오스크(Next.js) 시작 중...${NC}"
+    cd "$KIOSK_DIR"
+    PORT=3015 ./node_modules/.bin/next dev &
+fi
 
-# 로그 모니터링 (선택 사항)
-echo "로그 파일들이 생성되었습니다: backend.log, frontend.log, kiosk.log"
+echo -e "\n${GREEN}모든 교정 및 서버 구동이 완료되었습니다!${NC}"
+echo -e "${YELLOW}대시보드 : http://localhost:3030${NC}"
+echo -e "${YELLOW}키오스크 : http://localhost:3015${NC}\n"
+
 wait

@@ -17,7 +17,7 @@ from api.views.status_views import StudentStatusView
 from api.views.user_views import UserLoginView, UserRegisterView
 from api.views.UserRecommend_views import RecommendedItemView
 from api.views.TeacherFeedbackView import TeacherFeedbackView
-from api.views.schedule_views import ScheduleStructureView, AttendanceLogView, KioskLookupView
+from api.views.schedule_views import ScheduleStructureView, AttendanceLogView, KioskLookupView, KioskCheckInView
 from api.views.import_views import StudentImportView, TimetableImportView
 from api.views.semester_views import AcademicSemesterView
 
@@ -30,6 +30,7 @@ urlpatterns = [
     path("schedule/structure/", ScheduleStructureView.as_view()),
     path("schedule/logs/", AttendanceLogView.as_view()),
     path("kiosk/lookup/", KioskLookupView.as_view()),
+    path("kiosk/check-in/", KioskCheckInView.as_view()),
     path("user/register/", UserRegisterView.as_view()),
     path("user/login/", UserLoginView.as_view()),
     path("user/login/update/", TokenRefreshView.as_view()),

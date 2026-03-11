@@ -283,3 +283,17 @@ class AttendanceLog(models.Model):
 
     def __str__(self):
         return f"{self.student.name if self.student else 'Unknown'} - {self.status} ({self.check_in_time})"
+
+class MessageLog(models.Model):
+    student = models.ForeignKey(StudentMaster, on_delete=models.SET_NULL, null=True, blank=True)
+    sender = models.CharField(max_length=20)
+    receiver = models.CharField(max_length=20)
+    content = models.TextField()
+    status = models.CharField(max_length=20, default='success')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.receiver} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"

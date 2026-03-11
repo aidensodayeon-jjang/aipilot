@@ -17,6 +17,9 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Modal from '@mui/material/Modal';
 import TextField from '@mui/material/TextField';
+import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
+import Tooltip from '@mui/material/Tooltip';
 import { alpha } from '@mui/material/styles';
 
 import Iconify from 'src/components/iconify';
@@ -40,7 +43,9 @@ export default function ScheduleView() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [timetableData, setTimetableData] = useState({});
   const [dailyLogs, setDailyLogs] = useState([]);
+  const [msgLogs, setMsgLogs] = useState([]);
   const [modalState, setModalState] = useState({ isOpen: false, student: null, classInfo: null });
+  const [isMsgModalOpen, setIsMsgModalOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -57,16 +62,22 @@ export default function ScheduleView() {
 
   const fetchScheduleData = useCallback(async () => {
     try {
-      // 1. 전체 시간표 구조 가져오기 (API 구현 필요)
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      
+      // 1. 전체 시간표 구조 가져오기
       const scheduleRes = await fetchWithToken('/api/schedule/structure/', {}, navigate);
       const schedule = await scheduleRes.json();
       setTimetableData(schedule);
 
       // 2. 해당 날짜 출결 로그 가져오기
-      const dateStr = selectedDate.toISOString().split('T')[0];
       const logsRes = await fetchWithToken(`/api/schedule/logs/?date=${dateStr}`, {}, navigate);
       const logs = await logsRes.json();
       setDailyLogs(logs);
+
+      // 3. 해당 날짜 문자 발송 로그 가져오기
+      const msgRes = await fetchWithToken(`/api/message/?date=${dateStr}`, {}, navigate);
+      const msgData = await msgRes.json();
+      setMsgLogs(msgData);
     } catch (error) {
       console.error('Failed to fetch schedule data:', error);
     }
@@ -92,7 +103,28 @@ export default function ScheduleView() {
 
     try {
       if (action === 'sms') {
-        alert(`${student.name} 학생 학부모님께 출결 문자를 발송합니다.`);
+        const sender = localStorage.getItem('SOLAPI_CALL_ID') || '';
+        const timeStr = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        const payload = {
+          content: `[D-LAB] ${student.name} 학생이 출석하였습니다. (${timeStr})`,
+          phoneNums: [student.phone],
+          sender,
+        };
+
+        const smsRes = await fetchWithToken('/api/message/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }, navigate);
+
+        if (smsRes.ok) {
+          alert(`${student.name} 학생에게 출결 문자를 발송하였습니다.`);
+          setModalState((prev) => ({ ...prev, isOpen: false }));
+        } else {
+          const resData = await smsRes.json().catch(() => ({}));
+          alert(`발송 실패: ${resData.error || '설정 확인이 필요합니다.'}`);
+        }
         return;
       }
 
@@ -156,7 +188,7 @@ export default function ScheduleView() {
       </Box>
 
       <Card sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="center">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => {
             const d = new Date();
             d.setDate(d.getDate() - (6 - i));
@@ -173,6 +205,18 @@ export default function ScheduleView() {
               </Button>
             );
           })}
+          
+          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+          
+          <Button
+            variant="soft"
+            color="info"
+            startIcon={<Iconify icon="solar:letter-unread-bold-duotone" />}
+            onClick={() => setIsMsgModalOpen(true)}
+            sx={{ borderRadius: 1.5 }}
+          >
+            문자 발송 내역 ({msgLogs.length})
+          </Button>
         </Stack>
         <TextField
           type="date"
@@ -278,6 +322,54 @@ export default function ScheduleView() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* 문자 발송 내역 모달 */}
+      <Modal open={isMsgModalOpen} onClose={() => setIsMsgModalOpen(false)}>
+        <Box sx={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          width: 700, maxHeight: '80vh', bgcolor: 'background.paper', borderRadius: 2, boxShadow: 24, p: 4, 
+          display: 'flex', flexDirection: 'column'
+        }}>
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 800 }}>문자 발송 내역 ({selectedDate.toLocaleDateString()})</Typography>
+          
+          <TableContainer component={Paper} sx={{ flexGrow: 1, overflowY: 'auto', bgcolor: '#f8fafc', borderRadius: 1.5 }}>
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>시각</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>수신자 (학생)</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>내용</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>상태</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {msgLogs.length > 0 ? (
+                  msgLogs.map((log) => (
+                    <TableRow key={log.id} hover>
+                      <TableCell sx={{ fontSize: '0.8rem' }}>{log.created_at.split(' ')[1]}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{log.student_name}<br/><Typography variant="caption" color="text.disabled">{log.receiver}</Typography></TableCell>
+                      <TableCell sx={{ fontSize: '0.8rem', maxWidth: 250, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <Tooltip title={log.content}><span>{log.content}</span></Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Chip label="성공" size="small" color="success" variant="soft" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} sx={{ py: 4, textAlign: 'center', color: 'text.disabled' }}>
+                      발송된 문자가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          <Button fullWidth variant="outlined" onClick={() => setIsMsgModalOpen(false)} sx={{ mt: 3 }}>닫기</Button>
+        </Box>
+      </Modal>
 
       {/* 출결 처리 모달 */}
       <Modal open={modalState.isOpen} onClose={() => setModalState({ ...modalState, isOpen: false })}>

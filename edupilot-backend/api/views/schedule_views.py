@@ -39,7 +39,7 @@ class ScheduleStructureView(APIView):
                     "classId": c.id,
                     "className": c.subject_name,
                     "instructor": c.teacher_name,
-                    "students": [{"id": e.student.id, "name": e.student.name} for e in c.enrolled_students.all()]
+                    "students": [{"id": e.student.id, "name": e.student.name, "phone": e.student.phone_parent} for e in c.enrolled_students.all()]
                 }
             
             # 시간순 정렬 후 리스트로 변환
@@ -109,32 +109,117 @@ class AttendanceLogView(APIView):
 
 class KioskLookupView(APIView):
     """키오스크에서 전화번호로 학생 및 오늘 수업 조회"""
+    permission_classes = [] # AllowAny
+    
     def post(self, request):
-        phone = request.data.get('phone') # '01012345678'
-        # 뒷자리 4자리 검색 가능하도록 처리
-        students = StudentMaster.objects.filter(phone_parent__contains=phone[-4:]) | \
-                   StudentMaster.objects.filter(phone_user__contains=phone[-4:])
+        input_val = request.data.get('input', '') # 키오스크에서 'input'으로 보냄
+        if not input_val or len(input_val) < 4:
+            return Response({"error": "전화번호 4자리를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # 1. 기본적인 전화번호 매칭 (휴원생/퇴원생 제외)
+        # '재원생'이거나 status가 비어 있는 경우만 검색 대상으로 한정
+        base_query = StudentMaster.objects.exclude(status__in=['휴원생', '퇴원생', '퇴원'])
+        
+        students = base_query.filter(phone_parent__endswith=input_val) | \
+                   base_query.filter(phone_user__endswith=input_val)
         
         if not students.exists():
-            return Response({"error": "Student not found"}, status=404)
+            return Response({"error": "학생을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
             
-        # 오늘 요일 확인
-        today_day = timezone.now().strftime('%A') # e.g. 'Monday'
-        
+        # 2. 오늘 요일 확인
+        now = timezone.now()
+        day_of_week = now.strftime('%A')
+            
         result = []
-        for student in students:
-            # 해당 학생의 오늘 수업 찾기
-            enrollments = Enrollment.objects.filter(student=student, course_class__day_of_week__icontains=today_day)
-            classes = [{
-                "classId": e.course_class.id,
-                "className": e.course_class.subject_name,
-                "time": e.course_class.start_time.strftime('%H:%M')
-            } for e in enrollments]
+        for student in students.distinct():
+            # (선택 사항) 오늘 수업이 있는지 여부 확인 (표시 우선순위나 정보 제공용)
+            has_today_class = Enrollment.objects.filter(
+                student=student, 
+                course_class__day_of_week=day_of_week
+            ).exists()
             
+            # 오늘 수업이 있는 학생 위주로 노출하거나, 수업이 없더라도 '재원생'이면 노출
             result.append({
-                "studentId": student.id,
-                "studentName": student.name,
-                "classes": classes
+                "id": student.id,
+                "name": student.name,
+                "parent_phone": student.phone_parent,
+                "has_today_class": has_today_class
             })
             
         return Response(result)
+
+from api.utils.message import send_one
+from api.models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog
+from api.utils.config import callId
+
+class KioskCheckInView(APIView):
+    """키오스크에서 학생 출석 체크 실행"""
+    permission_classes = [] # AllowAny
+    
+    def post(self, request):
+        student_id = request.data.get('student_id')
+        now = timezone.now()
+        day_of_week = now.strftime('%A') # e.g. 'Monday'
+        
+        try:
+            student = StudentMaster.objects.get(id=student_id)
+            
+            # 오늘 수업 찾기
+            enrollments = Enrollment.objects.filter(
+                student=student, 
+                course_class__day_of_week=day_of_week
+            ).select_related('course_class')
+            
+            current_class = enrollments.first().course_class if enrollments.exists() else None
+            class_name = current_class.subject_name if current_class else "자습/방문"
+            check_in_time_str = now.strftime('%H:%M')
+
+            # 1. 출석 로그 생성 (중복 방지: 같은 학생, 같은 날짜)
+            log, created = AttendanceLog.objects.get_or_create(
+                student=student,
+                course_class=current_class,
+                check_in_time__date=now.date(),
+                defaults={
+                    'check_in_time': now,
+                    'method': 'Kiosk',
+                    'status': 'present'
+                }
+            )
+
+            # 2. SMS 발송 로직 추가
+            if student.phone_parent:
+                content = f"[D-LAB] {student.name} 학생이 출석하였습니다. ({check_in_time_str})"
+                message_data = {
+                    'to': student.phone_parent.replace("-", "").strip(),
+                    'from': callId.replace("-", "").strip(),
+                    'text': content
+                }
+                
+                try:
+                    # 실제 발송
+                    send_one(message_data)
+                    
+                    # 3. 메시지 로그 저장
+                    MessageLog.objects.create(
+                        student=student,
+                        sender=callId,
+                        receiver=student.phone_parent,
+                        content=content,
+                        status='success'
+                    )
+                except Exception as sms_err:
+                    print(f"SMS 발송 실패: {str(sms_err)}")
+            
+            return Response({
+                "success": True,
+                "log_id": log.id,
+                "student_name": student.name,
+                "parent_phone": student.phone_parent,
+                "class_name": class_name,
+                "check_in_time": check_in_time_str
+            })
+            
+        except StudentMaster.DoesNotExist:
+            return Response({"error": "학생 정보를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
