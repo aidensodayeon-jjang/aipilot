@@ -105,6 +105,7 @@ class SlackLogNew(models.Model):
 
 class SemesterStatus(models.Model):
     current_semester = models.CharField(max_length=6)  # 예: 202506
+    call_id = models.CharField(max_length=20, null=True, blank=True) # ✅ 추가
     new_count = models.IntegerField(default=0)  # ✅ 신규 등록 인원 수 저장용
     updated_at = models.DateTimeField(auto_now=True)
 

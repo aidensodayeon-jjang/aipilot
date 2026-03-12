@@ -169,71 +169,23 @@ export default function AppView() {
         />
       ) : (
         <Grid container spacing={3}>
-          <Grid xs={12} sm={6} md={3}>
-            <AppWidgetSummary
-              title="신규 상담 요청"
-              subTitle="ongoing"
-              total={`${totalConsultingCount}`}
-              icon={<Iconify icon="solar:history-bold-duotone" width={24} color="text.secondary" />}
-              trend={{ value: '2%', label: 'vs last month', color: 'error' }}
-              link="/students/%EC%83%81%EB%8B%B4%EC%A4%91"
-            />
-          </Grid>
-
-          <Grid xs={12} sm={6} md={3}>
-            <AppWidgetSummary
-              title="보강 필요 학생"
-              subTitle="students"
-              total={`${totalReservationCount}`}
-              icon={
-                <Iconify
-                  icon="eva:people-fill"
-                  width={24}
-                  color="text.secondary"
-                />
-              }
-              trend={{ value: '1', label: 'vs yesterday', color: 'success' }}
-              link="/attend"
-            />
-          </Grid>
-
-          <Grid xs={12} sm={6} md={3}>
-            <AppWidgetSummary
-              title="총 재원생"
-              subTitle="active"
-              total={`${TotalUserCount}`}
-              icon={
-                <Iconify
-                  icon="solar:users-group-two-rounded-bold-duotone"
-                  width={24}
-                  color="text.secondary"
-                />
-              }
-              trend={{ value: '5%', label: 'vs last month', color: 'success' }}
-              link="/students/%EC%9E%AC%EC%9B%90%EC%83%9D"
-            />
-          </Grid>
-
-          <Grid xs={12} sm={6} md={3}>
-            <AppWidgetSummary
-              title="이번 달 신규 등록"
-              subTitle="this term"
-              total={`${totalNewCount}`}
-              icon={<Iconify icon="solar:user-plus-bold-duotone" width={24} color="text.secondary" />}
-              trend={{ value: '12%', label: 'target achievement', color: 'success' }}
-              link="/students/new"
-            />
-          </Grid>
-
           <Grid xs={12} md={8}>
             <AppTasks
-              title="Tasks"
-              list={[
-                { id: '1', name: 'Git 저장소 정리 계획 수립' },
-                { id: '2', name: '노션(Notion)에 학기 일정 업데이트' },
-                { id: '3', name: '시간표 개발 진행 상황 체크' },
-                { id: '4', name: '네이버 광고 키워드 리서치' },
-              ]}
+              title="업무 및 피드백 관리"
+              initialTasks={{
+                short: [
+                  { id: '1', name: '오늘 학부모 상담 전화 3건', completed: false },
+                  { id: '2', name: '보강 일정 확정 및 안내', completed: true },
+                ],
+                mid: [
+                  { id: '3', name: '3월 학기 시간표 초안 작성', completed: false },
+                  { id: '4', name: '신규 교재 선정 및 발주', completed: false },
+                ],
+                feedback: [
+                  { id: '5', name: '김민준: 파이썬 조건문 이해도 낮음, 추가 과제 필요', completed: false },
+                  { id: '6', name: '이서연: 알고리즘 문제 풀이 속도 향상됨', completed: false },
+                ]
+              }}
             />
           </Grid>
 
@@ -280,28 +232,23 @@ export default function AppView() {
 
           <Grid xs={12} md={8}>
             <AppLectureStatus
-              title="겨울방학 특강 신청 현황"
+              title="신청 관리"
               list={[
                 {
                   id: '1',
-                  name: '파이썬 기초 트랙',
-                  applicants: '24 / 30',
-                  link: 'forms.gle/...',
-                  status: '접수중',
+                  name: '겨울방학 특강',
+                  shortUrl: 'bit.ly/dlab-winter-2026',
+                  response: 'docs.google.com/spreadsheets/d/1A2B3C4D5E6F7G8H9I0J_K1L2M3N4O5P6Q7R8S9T0U',
+                  link: 'forms.gle/abc123def456ghi789jkl012mno345pqr678stu901vwx',
+                  editLink: 'docs.google.com/forms/d/1A2B3C4D5E6F7G8H9I0J_K1L2M3N4O5P6Q7R8S9T0U/edit',
                 },
                 {
                   id: '2',
-                  name: 'AI 포트폴리오 반',
-                  applicants: '4 / 10',
-                  link: 'forms.gle/...',
-                  status: '마감임박',
-                },
-                {
-                  id: '3',
-                  name: 'C++ 알고리즘',
-                  applicants: '12 / 20',
-                  link: 'forms.gle/...',
-                  status: '접수중',
+                  name: 'AI 포트폴리오',
+                  shortUrl: 'bit.ly/dlab-ai-portfolio',
+                  response: 'docs.google.com/spreadsheets/d/2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S',
+                  link: 'forms.gle/def456ghi789jkl012mno345pqr678stu901vwx234yz567',
+                  editLink: 'docs.google.com/forms/d/2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S/edit',
                 },
               ]}
             />

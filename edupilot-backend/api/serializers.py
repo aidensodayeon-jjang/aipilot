@@ -48,6 +48,7 @@ class StudentMasterSerializer(serializers.ModelSerializer):
         if course:
             return {
                 'course': course.course,
+                'subject': course.subject,
                 'time': course.time,
                 'teacher': course.subject, # subject 필드에 담당자 정보가 들어가는 구조 고려
                 'memo': course.memo

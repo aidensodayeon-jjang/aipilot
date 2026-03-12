@@ -52,10 +52,13 @@ export default function KioskPage() {
         throw new Error(resData.error || '출석 체크 실패');
       }
 
-      // 2. Show Success (SMS 발송은 백엔드에서 이미 완료됨)
+      // 2. Show Success
       setSuccessData({ 
         student, 
-        classSession: { subject_name: resData.class_name } as any 
+        classSession: { 
+          subject_name: resData.class_name,
+          classroom: resData.classroom
+        } as any 
       });
       setStatus('success');
     } catch (err: any) {
@@ -126,49 +129,68 @@ export default function KioskPage() {
     setMessage('');
   };
 
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-dlab-blue/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-dlab-orange/10 rounded-full blur-[100px]" />
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-dlab-blue/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-dlab-orange/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="z-10 w-full max-w-md flex flex-col items-center">
-        {/* Logo Area */}
-        <div className="mb-12 text-center relative">
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            <span className="text-dlab-orange">D</span>-LAB <span className="text-gray-400 font-light">스마트 출결</span>
+      <div className="z-10 w-full flex flex-col items-center justify-center gap-y-12">
+        {/* Logo Area - Concentrated (50% width) */}
+        <div className="text-center relative w-[50vw] max-w-2xl mx-auto">
+          <h1 
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-3 tracking-tighter cursor-pointer select-none active:scale-95 transition-all duration-300 leading-tight"
+            onClick={toggleFullscreen}
+            title="전체화면 전환"
+          >
+            <span className="text-dlab-orange">D</span>-LAB <span className="text-slate-900 font-extralight">스마트 출결</span>
           </h1>
-          <p className="text-gray-500">학부모 전화번호 뒷 4자리를 입력해주세요</p>
+          <p className="text-base md:text-lg text-slate-400 font-bold tracking-tight">학부모 전화번호 뒷 4자리를 입력해주세요</p>
         </div>
 
-        {/* Input Display */}
-        <div className="w-full mb-8">
-          <div className={`
-            h-24 bg-gray-900/50 border-2 rounded-2xl flex items-center justify-center text-5xl font-mono text-white tracking-[1rem] shadow-inner backdrop-blur-sm transition-colors
-            ${status === 'error' ? 'border-red-500 text-red-500' : 'border-dlab-blue/30 focus-within:border-dlab-orange'}
-          `}>
-            {input.padEnd(4, '•').split('').map((char, i) => (
-              <span key={i} className={i < input.length ? 'text-white' : 'text-gray-700'}>
-                {i < input.length ? char : '•'}
-              </span>
-            ))}
-          </div>
-          {message && (
-            <div className={`mt-4 text-center font-medium ${status === 'error' ? 'text-red-500' : 'text-dlab-orange'} animate-pulse`}>
-              {message}
+        {/* Pad Area - Focused Unit */}
+        <div className="w-full max-w-md flex flex-col items-center">
+          {/* Input Display */}
+          <div className="w-full mb-6">
+            <div className={`
+              h-32 bg-white border-4 rounded-[2.5rem] flex items-center justify-center text-6xl font-mono tracking-[1.5rem] shadow-2xl shadow-slate-200/60 transition-all
+              ${status === 'error' ? 'border-red-500 text-red-500' : 'border-slate-100 text-slate-900'}
+            `}>
+              {input.padEnd(4, '•').split('').map((char, i) => (
+                <span key={i} className={i < input.length ? 'text-slate-900' : 'text-slate-200'}>
+                  {i < input.length ? char : '•'}
+                </span>
+              ))}
             </div>
-          )}
-        </div>
+            {message && (
+              <div className={`mt-4 text-center text-xl font-bold ${status === 'error' ? 'text-red-500' : 'text-dlab-orange'} animate-pulse`}>
+                {message}
+              </div>
+            )}
+          </div>
 
-        {/* Keypad */}
-        <Keypad
-          onKeyPress={handleKeyPress}
-          onDelete={handleDelete}
-          onSubmit={handleSubmit}
-          disabled={status === 'searching' || status === 'success'}
-        />
+          {/* Keypad */}
+          <Keypad
+            onKeyPress={handleKeyPress}
+            onDelete={handleDelete}
+            onSubmit={handleSubmit}
+            disabled={status === 'searching' || status === 'success'}
+          />
+        </div>
       </div>
 
       {/* Modals */}
@@ -187,6 +209,7 @@ export default function KioskPage() {
         <SuccessScreen
           studentName={successData.student.name}
           classNameStr={successData.classSession?.subject_name || '자습/방문'}
+          classroom={successData.classSession?.classroom || '1'}
           time={format(new Date(), 'HH:mm')}
           onComplete={handleSuccessComplete}
         />

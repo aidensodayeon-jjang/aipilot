@@ -75,7 +75,12 @@ export default function UserAttend({ openFilter, setOpenFilter, selected, fetchA
       .catch(() => {
         setValue('term', '202603'); // 기본값
       });
-  }, [selected.id, setValue]);
+
+    // 학생의 현재 수강 과목(subject)을 디폴트로 설정
+    if (selected.current_course && selected.current_course.subject) {
+      setValue('subject', selected.current_course.subject);
+    }
+  }, [selected.id, selected.current_course, setValue]);
 
   const renderTerm = (
     <Stack spacing={1}>
