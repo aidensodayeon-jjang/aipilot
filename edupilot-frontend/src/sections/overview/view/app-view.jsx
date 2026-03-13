@@ -178,7 +178,7 @@ export default function AppView() {
             unpaidCount: totalUnpaidCount,
             newCount: totalNewCount,
             totalRevenue,
-            dbStats, # ✅ 추가
+            dbStats, // ✅ 추가
           }}
         />
       ) : (
