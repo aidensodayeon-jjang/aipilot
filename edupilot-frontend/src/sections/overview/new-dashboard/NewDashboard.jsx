@@ -16,6 +16,7 @@ import Chart, { useChart } from 'src/components/chart';
 
 export default function NewDashboard({ data, apiStats }) {
   const stats = useMemo(() => {
+    // 1. 기본적으로 로컬 파일 데이터 계산
     const totalStudents = data.length;
     const totalRevenue = data.reduce((acc, curr) => acc + curr.paymentAmount, 0);
     const unpaidAmount = data
@@ -23,8 +24,14 @@ export default function NewDashboard({ data, apiStats }) {
       .reduce((acc, curr) => acc + curr.paymentAmount, 0);
     const newStudents = data.filter((d) => d.isNew).length;
 
-    return { totalStudents, totalRevenue, unpaidAmount, newStudents };
-  }, [data]);
+    // 2. 만약 API(DB)에서 온 값이 있으면 덮어씌움
+    return {
+      totalStudents: apiStats.userCount || totalStudents,
+      totalRevenue: apiStats.totalRevenue !== undefined ? apiStats.totalRevenue : totalRevenue,
+      unpaidAmount: apiStats.unpaidAmount !== undefined ? apiStats.unpaidAmount : unpaidAmount,
+      newStudents: apiStats.newCount || newStudents,
+    };
+  }, [data, apiStats]); // ✅ apiStats 추가
 
   const paymentStatusData = useMemo(() => {
     if (apiStats.dbStats?.payment_data) {
@@ -39,7 +46,7 @@ export default function NewDashboard({ data, apiStats }) {
       labels: ['결제완료', '미결제', 'PASS'],
       series: [statusCounts['결제완료'] || 0, statusCounts['미결제'] || 0, statusCounts.PASS || 0],
     };
-  }, [data]);
+  }, [data, apiStats]); // ✅ apiStats 추가
 
   const schoolData = useMemo(() => {
     if (apiStats.dbStats?.school_data) {
@@ -58,7 +65,7 @@ export default function NewDashboard({ data, apiStats }) {
       labels: sorted.map((s) => s[0]),
       series: sorted.map((s) => s[1]),
     };
-  }, [data]);
+  }, [data, apiStats]); // ✅ apiStats 추가
 
   const gradeStats = useMemo(() => {
     if (apiStats.dbStats?.grade_data) {
@@ -83,7 +90,7 @@ export default function NewDashboard({ data, apiStats }) {
       { label: '중등부 (1-3학년)', count: middle, percent: (middle / total) * 100, color: 'info' },
       { label: '기타', count: others, percent: (others / total) * 100, color: 'warning' },
     ];
-  }, [data]);
+  }, [data, apiStats]); // ✅ apiStats 추가
 
   return (
     <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 2 }}>
