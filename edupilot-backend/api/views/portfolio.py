@@ -34,6 +34,10 @@ def portfolio_announcement(_):
             "id": f"announce-{ann.id}",
             "title": ann.title,
             "content": ann.content,
+            "short_url": ann.short_url,
+            "response_url": ann.response_url,
+            "link_url": ann.link_url,
+            "edit_url": ann.edit_url,
             "date": ann.date.isoformat()
         } for ann in announcement_qs
     ]

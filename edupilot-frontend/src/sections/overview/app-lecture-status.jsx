@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 
 import Card from '@mui/material/Card';
 import Box from '@mui/material/Box';
@@ -20,27 +21,91 @@ import Alert from '@mui/material/Alert';
 
 import Iconify from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
+import { fetchWithToken } from 'src/utils/auth/fetch-with-token';
 
 // ----------------------------------------------------------------------
 
-export default function AppLectureStatus({ title, subheader, list: initialList, ...other }) {
-  const [list, setList] = useState(initialList);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+export default function AppLectureStatus({ title, subheader, ...other }) {
+  const [list, setList] = useState([]);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const navigate = useNavigate();
+
+  const fetchList = useCallback(async () => {
+    try {
+      const response = await fetchWithToken('/api/announcements/', { method: 'GET' }, navigate);
+      if (response.ok) {
+        const data = await response.json();
+        setList(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch announcements:', error);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchList();
+  }, [fetchList]);
 
   const handleAdd = () => {
-    const newId = String(Date.now());
-    setList([...list, { id: newId, name: '', shortUrl: '', response: '', link: '', editLink: '', isEditing: true }]);
+    const newId = `new-${Date.now()}`;
+    setList([{ id: newId, title: '', short_url: '', response_url: '', link_url: '', edit_url: '', isEditing: true }, ...list]);
   };
 
-  const handleUpdate = (id, newData) => {
-    setList(list.map(item => (item.id === id ? { ...item, ...newData, isEditing: false } : item)));
+  const handleUpdate = async (id, newData) => {
+    try {
+      const method = String(id).startsWith('new-') ? 'POST' : 'PUT';
+      const url = method === 'POST' ? '/api/announcements/' : `/api/announcements/${id}/`;
+      
+      const response = await fetchWithToken(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newData),
+      }, navigate);
+
+      if (response.ok) {
+        setSnackbar({ open: true, message: method === 'POST' ? '추가되었습니다.' : '수정되었습니다.', severity: 'success' });
+        fetchList();
+      } else {
+        setSnackbar({ open: true, message: '저장에 실패했습니다.', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Failed to update announcement:', error);
+      setSnackbar({ open: true, message: '오류가 발생했습니다.', severity: 'error' });
+    }
   };
 
-  const handleDelete = (id) => {
-    setList(list.filter(item => item.id !== id));
+  const handleDelete = async (id) => {
+    if (String(id).startsWith('new-')) {
+      setList(list.filter(item => item.id !== id));
+      return;
+    }
+
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
+
+    try {
+      const response = await fetchWithToken(`/api/announcements/${id}/`, {
+        method: 'DELETE',
+      }, navigate);
+
+      if (response.ok) {
+        setSnackbar({ open: true, message: '삭제되었습니다.', severity: 'success' });
+        fetchList();
+      } else {
+        setSnackbar({ open: true, message: '삭제에 실패했습니다.', severity: 'error' });
+      }
+    } catch (error) {
+      console.error('Failed to delete announcement:', error);
+      setSnackbar({ open: true, message: '오류가 발생했습니다.', severity: 'error' });
+    }
   };
 
   const toggleEdit = (id) => {
+    if (String(id).startsWith('new-') && list.find(item => item.id === id)?.isEditing) {
+        setList(list.filter(item => item.id !== id));
+        return;
+    }
     setList(list.map(item => (item.id === id ? { ...item, isEditing: !item.isEditing } : item)));
   };
 
@@ -48,7 +113,7 @@ export default function AppLectureStatus({ title, subheader, list: initialList, 
     if (!text) return;
     const fullUrl = text.startsWith('http') ? text : `https://${text}`;
     navigator.clipboard.writeText(fullUrl);
-    setSnackbar({ open: true, message: 'URL이 클립보드에 복사되었습니다.' });
+    setSnackbar({ open: true, message: 'URL이 클립보드에 복사되었습니다.', severity: 'success' });
   };
 
   return (
@@ -105,7 +170,7 @@ export default function AppLectureStatus({ title, subheader, list: initialList, 
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" sx={{ width: '100%' }} variant="filled">
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }} variant="filled">
           {snackbar.message}
         </Alert>
       </Snackbar>
@@ -114,7 +179,6 @@ export default function AppLectureStatus({ title, subheader, list: initialList, 
 }
 
 AppLectureStatus.propTypes = {
-  list: PropTypes.array,
   subheader: PropTypes.string,
   title: PropTypes.string,
 };
@@ -122,8 +186,8 @@ AppLectureStatus.propTypes = {
 // ----------------------------------------------------------------------
 
 function LectureRow({ row, onUpdate, onDelete, onEdit, onCopy }) {
-  const { name, shortUrl, response, link, editLink, isEditing } = row;
-  const [editData, setEditData] = useState({ name, shortUrl, response, link, editLink });
+  const { title, short_url, response_url, link_url, edit_url, isEditing } = row;
+  const [editData, setEditData] = useState({ title, short_url, response_url, link_url, edit_url });
 
   const handleChange = (e) => {
     const { name: field, value } = e.target;
@@ -169,19 +233,19 @@ function LectureRow({ row, onUpdate, onDelete, onEdit, onCopy }) {
     return (
       <TableRow>
         <TableCell sx={{ px: 1 }}>
-          <TextField name="name" size="small" variant="standard" value={editData.name} onChange={handleChange} placeholder="제목" fullWidth inputProps={{ style: { fontSize: '0.75rem' } }} />
+          <TextField name="title" size="small" variant="standard" value={editData.title} onChange={handleChange} placeholder="제목" fullWidth inputProps={{ style: { fontSize: '0.75rem' } }} />
         </TableCell>
         <TableCell sx={{ px: 0.5 }}>
-          <TextField name="shortUrl" size="small" variant="standard" multiline value={editData.shortUrl} onChange={handleChange} placeholder="단축" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
+          <TextField name="short_url" size="small" variant="standard" multiline value={editData.short_url} onChange={handleChange} placeholder="단축" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
         </TableCell>
         <TableCell sx={{ px: 0.5 }}>
-          <TextField name="response" size="small" variant="standard" multiline value={editData.response} onChange={handleChange} placeholder="응답" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
+          <TextField name="response_url" size="small" variant="standard" multiline value={editData.response_url} onChange={handleChange} placeholder="응답" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
         </TableCell>
         <TableCell sx={{ px: 0.5 }}>
-          <TextField name="link" size="small" variant="standard" multiline value={editData.link} onChange={handleChange} placeholder="신청" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
+          <TextField name="link_url" size="small" variant="standard" multiline value={editData.link_url} onChange={handleChange} placeholder="신청" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
         </TableCell>
         <TableCell sx={{ px: 0.5 }}>
-          <TextField name="editLink" size="small" variant="standard" multiline value={editData.editLink} onChange={handleChange} placeholder="편집" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
+          <TextField name="edit_url" size="small" variant="standard" multiline value={editData.edit_url} onChange={handleChange} placeholder="편집" fullWidth inputProps={{ style: { fontSize: '0.7rem' } }} />
         </TableCell>
         <TableCell align="right" sx={{ pr: 1.5 }}>
           <Stack direction="row" justifyContent="flex-end" spacing={0}>
@@ -199,11 +263,11 @@ function LectureRow({ row, onUpdate, onDelete, onEdit, onCopy }) {
 
   return (
     <TableRow sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-      <TableCell sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem', px: 1.5 }}>{name || '(제목 없음)'}</TableCell>
-      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(shortUrl)}</TableCell>
-      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(response)}</TableCell>
-      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(link)}</TableCell>
-      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(editLink)}</TableCell>
+      <TableCell sx={{ fontWeight: 700, color: 'text.primary', fontSize: '0.75rem', px: 1.5 }}>{title || '(제목 없음)'}</TableCell>
+      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(short_url)}</TableCell>
+      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(response_url)}</TableCell>
+      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(link_url)}</TableCell>
+      <TableCell sx={{ px: 0.5 }}>{renderUrlLink(edit_url)}</TableCell>
       <TableCell align="right" sx={{ pr: 1.5 }}>
         <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
           <IconButton size="small" color="primary" onClick={onEdit} sx={{ p: 0.5 }}>

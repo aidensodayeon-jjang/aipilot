@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path
+from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 
 from api.views.attend_views import AttendView
@@ -20,10 +20,16 @@ from api.views.TeacherFeedbackView import TeacherFeedbackView
 from api.views.schedule_views import ScheduleStructureView, AttendanceLogView, KioskLookupView, KioskCheckInView
 from api.views.import_views import StudentImportView, TimetableImportView
 from api.views.semester_views import AcademicSemesterView
+from api.views.announcement_views import AnnouncementViewSet
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'announcements', AnnouncementViewSet)
 
 app_name = "api"
 
 urlpatterns = [
+    path("", include(router.urls)),
     path("semester/", AcademicSemesterView.as_view()),
     path("import/students/", StudentImportView.as_view()),
     path("import/timetable/", TimetableImportView.as_view()),

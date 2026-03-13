@@ -231,27 +231,7 @@ export default function AppView() {
           </Grid>
 
           <Grid xs={12} md={8}>
-            <AppLectureStatus
-              title="신청 관리"
-              list={[
-                {
-                  id: '1',
-                  name: '겨울방학 특강',
-                  shortUrl: 'bit.ly/dlab-winter-2026',
-                  response: 'docs.google.com/spreadsheets/d/1A2B3C4D5E6F7G8H9I0J_K1L2M3N4O5P6Q7R8S9T0U',
-                  link: 'forms.gle/abc123def456ghi789jkl012mno345pqr678stu901vwx',
-                  editLink: 'docs.google.com/forms/d/1A2B3C4D5E6F7G8H9I0J_K1L2M3N4O5P6Q7R8S9T0U/edit',
-                },
-                {
-                  id: '2',
-                  name: 'AI 포트폴리오',
-                  shortUrl: 'bit.ly/dlab-ai-portfolio',
-                  response: 'docs.google.com/spreadsheets/d/2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S',
-                  link: 'forms.gle/def456ghi789jkl012mno345pqr678stu901vwx234yz567',
-                  editLink: 'docs.google.com/forms/d/2X3Y4Z5A6B7C8D9E0F1G2H3I4J5K6L7M8N9O0P1Q2R3S/edit',
-                },
-              ]}
-            />
+            <AppLectureStatus title="신청 관리" />
           </Grid>
 
           <Grid xs={12} md={4}>

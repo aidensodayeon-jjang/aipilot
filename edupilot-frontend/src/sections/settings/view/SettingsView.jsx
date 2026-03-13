@@ -246,7 +246,7 @@ export default function SettingsView() {
           </Card>
         </Grid>
 
-        <Grid xs={12}><Divider sx={{ my: 2 }} /></Divider></Grid>
+        <Grid xs={12}><Divider sx={{ my: 2 }} /></Grid>
 
         {/* 파일 업로드 섹션 */}
         <Grid xs={12} md={4}>

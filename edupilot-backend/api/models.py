@@ -152,10 +152,13 @@ class CourseWeek(models.Model):
 
 
 class Announcement(models.Model):
-    # announce_id = models.CharField(...)  ← 이 줄 제거
     title = models.CharField(max_length=255)
-    content = models.TextField()
-    date = models.DateField()
+    content = models.TextField(blank=True, null=True)
+    date = models.DateField(auto_now_add=True)
+    short_url = models.CharField(max_length=255, blank=True, null=True)
+    response_url = models.CharField(max_length=255, blank=True, null=True)
+    link_url = models.CharField(max_length=255, blank=True, null=True)
+    edit_url = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         db_table = 'announcement'
