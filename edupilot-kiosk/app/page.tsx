@@ -8,7 +8,12 @@ import SuccessScreen from '@/components/kiosk/SuccessScreen';
 import { Student, ClassSession } from '@/types';
 import { format } from 'date-fns';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = typeof window !== 'undefined' 
+  ? (process.env.NEXT_PUBLIC_API_URL || 
+      (window.location.hostname.includes('sodayeon.co.kr') 
+        ? `https://${window.location.hostname}/api` 
+        : `http://${window.location.hostname}:8000/api`))
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api');
 
 export default function KioskPage() {
   const {
@@ -149,17 +154,17 @@ export default function KioskPage() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-dlab-orange/5 rounded-full blur-[100px]" />
       </div>
 
-      <div className="z-10 w-full flex flex-col items-center justify-center gap-y-12">
-        {/* Logo Area - Concentrated (50% width) */}
-        <div className="text-center relative w-[50vw] max-w-2xl mx-auto">
+      <div className="z-10 w-full flex flex-col items-center justify-center gap-y-10 md:gap-y-16">
+        {/* Logo Area - Concentrated (Expanded for Mobile) */}
+        <div className="text-center relative w-[95vw] sm:w-[80vw] md:w-[60vw] max-w-4xl mx-auto">
           <h1 
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-3 tracking-tighter cursor-pointer select-none active:scale-95 transition-all duration-300 leading-tight"
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-slate-900 mb-4 tracking-tighter cursor-pointer select-none active:scale-95 transition-all duration-300 leading-[1.1]"
             onClick={toggleFullscreen}
             title="전체화면 전환"
           >
             <span className="text-dlab-orange">D</span>-LAB <span className="text-slate-900 font-extralight">스마트 출결</span>
           </h1>
-          <p className="text-base md:text-lg text-slate-400 font-bold tracking-tight">학부모 전화번호 뒷 4자리를 입력해주세요</p>
+          <p className="text-lg md:text-xl text-slate-400 font-bold tracking-tight">학부모 전화번호 뒷 4자리를 입력해주세요</p>
         </div>
 
         {/* Pad Area - Focused Unit */}

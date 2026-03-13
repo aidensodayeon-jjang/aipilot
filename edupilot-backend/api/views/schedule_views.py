@@ -105,7 +105,7 @@ class KioskLookupView(APIView):
         if not input_val or len(input_val) < 4:
             return Response({"error": "전화번호 4자리를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
             
-        base_query = StudentMaster.objects.exclude(status__in=['휴원생', '퇴원생', '퇴원'])
+        base_query = StudentMaster.objects.filter(status='재원생')
         students = base_query.filter(phone_parent__endswith=input_val) | \
                    base_query.filter(phone_user__endswith=input_val)
         
