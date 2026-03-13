@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from datetime import datetime
-from ..models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog
+from ..models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog, SemesterStatus
 from django.db.models import Prefetch
 from api.utils.message import send_one
 from api.utils.config import callId
@@ -156,17 +156,21 @@ class KioskCheckInView(APIView):
             )
 
             if student.phone_parent:
+                # DB에서 발신번호(call_id) 동적 로드
+                sem_status = SemesterStatus.objects.first()
+                final_call_id = sem_status.call_id if sem_status and sem_status.call_id else callId
+                
                 content = f"[D-LAB] {student.name} 학생이 출석하였습니다. ({check_in_time_str})"
                 message_data = {
                     'message': {
                         'to': student.phone_parent.replace("-", "").strip(),
-                        'from': callId.replace("-", "").strip(),
+                        'from': final_call_id.replace("-", "").strip(),
                         'text': content
                     }
                 }
                 try:
                     send_one(message_data)
-                    MessageLog.objects.create(student=student, sender=callId, receiver=student.phone_parent, content=content, status='success')
+                    MessageLog.objects.create(student=student, sender=final_call_id, receiver=student.phone_parent, content=content, status='success')
                 except: pass
             
             return Response({"success": True, "class_name": class_name, "check_in_time": check_in_time_str})

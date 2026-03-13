@@ -5,7 +5,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from api.utils.config import callId
 from api.utils.message import send_many
-from api.models import MessageLog, StudentMaster
+from api.models import MessageLog, StudentMaster, SemesterStatus
 
 
 class MessageView(APIView):
@@ -35,9 +35,14 @@ class MessageView(APIView):
     def post(self, request):
         content = request.data.get("content", None)
         phone_nums = request.data.get("phoneNums", [])
-        # 프론트엔드에서 보낸 발신번호가 비어있으면 config 기본값 사용
+        
+        # 1. DB에서 발신번호 가져오기 시도
+        semester_status = SemesterStatus.objects.first()
+        db_call_id = semester_status.call_id if semester_status else None
+        
+        # 2. 우선순위: 프론트엔드 전달값 > DB 저장값 > config 기본값
         sender_raw = request.data.get("sender", "")
-        sender = sender_raw if sender_raw else callId
+        sender = sender_raw if sender_raw else (db_call_id if db_call_id else callId)
 
         if not content or not phone_nums:
             return Response({"error": "내용 또는 수신자 번호가 없습니다."}, status=400)
