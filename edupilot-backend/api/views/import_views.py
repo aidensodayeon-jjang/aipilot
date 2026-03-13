@@ -134,11 +134,14 @@ class StudentImportView(APIView):
 
                     course_raw = get_row_val(row, '수강과목', '과목', '수강과정')
                     time_info = get_row_val(row, '수강시간', '시간', '수업시간')
+                    pay_status = get_row_val(row, '수강료결제', '결제상태', '결제여부', '결제')
+                    if not pay_status: pay_status = '결제완료' # 기본값
+
                     if course_raw:
                         CourseMaster.objects.create(
                             userid=student, term=current_semester, course='정규과정',
                             subject=course_raw, phone_parent=student.phone_parent,
-                            time=time_info, openlab='정규', pay='결제완료'
+                            time=time_info, openlab='정규', pay=pay_status
                         )
                     success_count += 1
 
