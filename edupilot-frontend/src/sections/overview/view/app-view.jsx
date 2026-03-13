@@ -35,6 +35,11 @@ export default function AppView() {
   const [totalUnpaidCount, setTotalUnpaidCount] = useState(0);
   const [totalNewCount, setTotalNewCount] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [dbStats, setDbStats] = useState({
+    payment_data: null,
+    school_data: null,
+    grade_data: null,
+  });
   const [weekInfo, setWeekInfo] = useState('');
   const [dayInfo, setDayInfo] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -71,6 +76,11 @@ export default function AppView() {
         setTotalUnpaidCount(result.total_unpaid_count || 0);
         setTotalNewCount(result.new_student_count || 0);
         setTotalRevenue(result.total_revenue || 0);
+        setDbStats({
+          payment_data: result.payment_data,
+          school_data: result.school_data,
+          grade_data: result.grade_data,
+        });
         setWeekInfo(result.week_info || '');
         setDayInfo(result.day_info || '');
         setProgressPercent(result.progress_percent || 0);
@@ -167,7 +177,8 @@ export default function AppView() {
             paidCount: totalPaidCount,
             unpaidCount: totalUnpaidCount,
             newCount: totalNewCount,
-            totalRevenue, // ✅ 추가
+            totalRevenue,
+            dbStats, # ✅ 추가
           }}
         />
       ) : (

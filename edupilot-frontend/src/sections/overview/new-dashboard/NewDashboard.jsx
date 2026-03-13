@@ -27,6 +27,9 @@ export default function NewDashboard({ data, apiStats }) {
   }, [data]);
 
   const paymentStatusData = useMemo(() => {
+    if (apiStats.dbStats?.payment_data) {
+      return apiStats.dbStats.payment_data;
+    }
     const statusCounts = data.reduce((acc, curr) => {
       const status = curr.paymentStatus || 'Unknown';
       acc[status] = (acc[status] || 0) + 1;
@@ -39,6 +42,9 @@ export default function NewDashboard({ data, apiStats }) {
   }, [data]);
 
   const schoolData = useMemo(() => {
+    if (apiStats.dbStats?.school_data) {
+      return apiStats.dbStats.school_data;
+    }
     const counts = data.reduce((acc, curr) => {
       const school = curr.school || 'Unknown';
       if (school === 'Unknown' || school === '') return acc;
@@ -55,6 +61,9 @@ export default function NewDashboard({ data, apiStats }) {
   }, [data]);
 
   const gradeStats = useMemo(() => {
+    if (apiStats.dbStats?.grade_data) {
+      return apiStats.dbStats.grade_data;
+    }
     let elementaryHigh = 0;
     let middle = 0;
     let others = 0;

@@ -37,6 +37,47 @@ class DashboardView(APIView):
             new_student_count = semester_status.new_count
             total_revenue = semester_status.total_revenue
 
+        # 2. 상세 통계 집계 (DB 기반)
+        # 2-1. 결제 상태 비중 (CourseMaster 기준)
+        payment_stats = CourseMaster.objects.filter(userid__status='재원생').values('pay').annotate(count=Count('pay'))
+        payment_data = {
+            "labels": ["결제완료", "미결제", "PASS"],
+            "series": [0, 0, 0]
+        }
+        for item in payment_stats:
+            pay_status = item['pay']
+            count = item['count']
+            if pay_status == '결제완료': payment_data["series"][0] = count
+            elif pay_status == '미결제': payment_data["series"][1] = count
+            elif pay_status == 'PASS': payment_data["series"][2] = count
+
+        # 2-2. 학교별 재원생 Top 8 (StudentMaster 기준)
+        school_stats = StudentMaster.objects.filter(status='재원생').exclude(school='').values('school').annotate(count=Count('school')).order_by('-count')[:8]
+        school_data = {
+            "labels": [item['school'] for item in school_stats],
+            "series": [item['count'] for item in school_stats]
+        }
+
+        # 2-3. 학년별 구성비 (StudentMaster 기준)
+        grade_stats = StudentMaster.objects.filter(status='재원생').values('grade').annotate(count=Count('grade'))
+        elem_high = 0 # 초5-6
+        middle = 0    # 중등
+        others = 0    # 기타
+        total_students = StudentMaster.objects.filter(status='재원생').count() or 1
+
+        for item in grade_stats:
+            g = item['grade'] or ''
+            c = item['count']
+            if '초5' in g or '초6' in g: elem_high += c
+            elif '중' in g: middle += c
+            else: others += c
+        
+        grade_data = [
+            {"label": "초등 고학년 (5-6학년)", "count": elem_high, "percent": round((elem_high / total_students) * 100, 1)},
+            {"label": "중등부 (1-3학년)", "count": middle, "percent": round((middle / total_students) * 100, 1)},
+            {"label": "기타", "count": others, "percent": round((others / total_students) * 100, 1)},
+        ]
+
         if current_semester:
             today = date.today()
             try:
@@ -75,5 +116,9 @@ class DashboardView(APIView):
             "progress_percent": progress_percent,
             "new_student_count": new_student_count,
             "total_revenue": total_revenue,
+            # 추가된 통계 데이터
+            "payment_data": payment_data,
+            "school_data": school_data,
+            "grade_data": grade_data,
         }
         return Response(results)
