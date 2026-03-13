@@ -97,7 +97,12 @@ export default function NewDashboard({ data, apiStats }) {
 
         {/* Row 2: Financials & Operational Stats */}
         <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="총 매출액" total={`₩${stats.totalRevenue.toLocaleString()}`} icon="solar:wad-of-money-bold-duotone" color="#10b981" />
+          <SummaryCard 
+            title="총 매출액" 
+            total={`₩${(apiStats.totalRevenue || stats.totalRevenue).toLocaleString()}`} 
+            icon="solar:wad-of-money-bold-duotone" 
+            color="#10b981" 
+          />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
           <SummaryCard title="미결제 총액" total={`₩${stats.unpaidAmount.toLocaleString()}`} icon="solar:bill-list-bold-duotone" color="#f43f5e" />
@@ -161,7 +166,8 @@ NewDashboard.propTypes = {
     unregCount: PropTypes.number,
     paidCount: PropTypes.number,
     unpaidCount: PropTypes.number,
-    newCount: PropTypes.number, // ✅ 추가
+    newCount: PropTypes.number,
+    totalRevenue: PropTypes.number, // ✅ 추가
   }),
 };
 

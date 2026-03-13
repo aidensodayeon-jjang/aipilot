@@ -30,10 +30,12 @@ class DashboardView(APIView):
         current_week = None
         progress_percent = 0
         new_student_count = 0
+        total_revenue = 0
 
-        # 저장된 신규 인원수 가져오기
+        # 저장된 신규 인원수 및 총 매출액 가져오기
         if semester_status:
             new_student_count = semester_status.new_count
+            total_revenue = semester_status.total_revenue
 
         if current_semester:
             today = date.today()
@@ -72,5 +74,6 @@ class DashboardView(APIView):
             "day_info": korean_day,
             "progress_percent": progress_percent,
             "new_student_count": new_student_count,
+            "total_revenue": total_revenue,
         }
         return Response(results)

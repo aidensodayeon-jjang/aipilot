@@ -34,6 +34,7 @@ export default function AppView() {
   const [totalPaidCount, setTotalPaidCount] = useState(0);
   const [totalUnpaidCount, setTotalUnpaidCount] = useState(0);
   const [totalNewCount, setTotalNewCount] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   const [weekInfo, setWeekInfo] = useState('');
   const [dayInfo, setDayInfo] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -69,6 +70,7 @@ export default function AppView() {
         setTotalPaidCount(result.total_paid_count || 0);
         setTotalUnpaidCount(result.total_unpaid_count || 0);
         setTotalNewCount(result.new_student_count || 0);
+        setTotalRevenue(result.total_revenue || 0);
         setWeekInfo(result.week_info || '');
         setDayInfo(result.day_info || '');
         setProgressPercent(result.progress_percent || 0);
@@ -164,7 +166,8 @@ export default function AppView() {
             unregCount: totalUnregCount,
             paidCount: totalPaidCount,
             unpaidCount: totalUnpaidCount,
-            newCount: totalNewCount, // ✅ 누락되었던 이 부분을 추가합니다.
+            newCount: totalNewCount,
+            totalRevenue, // ✅ 추가
           }}
         />
       ) : (

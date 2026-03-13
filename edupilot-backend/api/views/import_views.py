@@ -55,6 +55,7 @@ class StudentImportView(APIView):
 
             success_count = 0
             new_count = 0
+            total_revenue = 0 # ✅ 매출액 합계용
             
             with transaction.atomic():
                 # 1. 기존 재원생을 미처리로 변경 (학기 전환 대비)
@@ -65,6 +66,17 @@ class StudentImportView(APIView):
 
                 for row in rows:
                     if not row: continue
+
+                    # 매출액 계산 (결제금액 + 키트결제)
+                    payment_val = get_row_val(row, '결제금액', '금액')
+                    kit_val = get_row_val(row, '키트결제', '키트')
+                    
+                    try:
+                        p_amt = int(re.sub(r'[^\d]', '', payment_val)) if payment_val else 0
+                        k_amt = int(re.sub(r'[^\d]', '', kit_val)) if kit_val else 0
+                        total_revenue += (p_amt + k_amt)
+                    except ValueError:
+                        pass
 
                     # 첫 번째 열(index 0)의 값을 직접 확인 (신규/얼리버드/결제선생 컬럼)
                     first_col_val = row[0] if len(row) > 0 else ""
@@ -130,20 +142,23 @@ class StudentImportView(APIView):
                         )
                     success_count += 1
 
-                # 3. 신규 인원 수를 SemesterStatus에 영구 저장 (객체가 없을 경우 생성)
+                # 3. 신규 인원수 및 총 매출액을 SemesterStatus에 영구 저장
                 if current_semester_obj:
                     current_semester_obj.new_count = new_count
+                    current_semester_obj.total_revenue = total_revenue
                     current_semester_obj.save()
                 else:
                     SemesterStatus.objects.create(
                         current_semester=current_semester,
-                        new_count=new_count
+                        new_count=new_count,
+                        total_revenue=total_revenue
                     )
 
             return Response({
-                "message": f"데이터 처리가 완료되었습니다. (총 {success_count}명, 신규 {new_count}명)",
+                "message": f"데이터 처리가 완료되었습니다. (총 {success_count}명, 신규 {new_count}명, 매출액 {total_revenue:,}원)",
                 "success_count": success_count,
-                "new_count": new_count
+                "new_count": new_count,
+                "total_revenue": total_revenue
             })
 
         except Exception as e:
