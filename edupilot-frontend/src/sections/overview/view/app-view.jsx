@@ -35,6 +35,7 @@ export default function AppView() {
   const [totalUnpaidCount, setTotalUnpaidCount] = useState(0);
   const [totalNewCount, setTotalNewCount] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalUnpaidAmount, setTotalUnpaidAmount] = useState(0);
   const [dbStats, setDbStats] = useState({
     payment_data: null,
     school_data: null,
@@ -77,6 +78,7 @@ export default function AppView() {
         setTotalUnpaidCount(result.total_unpaid_count || 0);
         setTotalNewCount(result.new_student_count || 0);
         setTotalRevenue(result.total_revenue || 0);
+        setTotalUnpaidAmount(result.unpaid_amount || 0);
         setDbStats({
           payment_data: result.payment_data,
           school_data: result.school_data,
@@ -180,6 +182,7 @@ export default function AppView() {
             unpaidCount: totalUnpaidCount,
             newCount: totalNewCount,
             totalRevenue,
+            unpaidAmount: totalUnpaidAmount, // ✅ 추가
             dbStats, // ✅ 추가
           }}
         />

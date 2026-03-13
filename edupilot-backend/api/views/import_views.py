@@ -56,6 +56,7 @@ class StudentImportView(APIView):
             success_count = 0
             new_count = 0
             total_revenue = 0 # ✅ 매출액 합계용
+            total_unpaid = 0  # ✅ 미결제 총액용
             
             with transaction.atomic():
                 # 1. 기존 재원생을 미처리로 변경 (학기 전환 대비)
@@ -74,7 +75,13 @@ class StudentImportView(APIView):
                     try:
                         p_amt = int(re.sub(r'[^\d]', '', payment_val)) if payment_val else 0
                         k_amt = int(re.sub(r'[^\d]', '', kit_val)) if kit_val else 0
-                        total_revenue += (p_amt + k_amt)
+                        current_row_total = p_amt + k_amt
+                        total_revenue += current_row_total
+                        
+                        # 결제 상태 확인 후 미결제 총액 합산
+                        pay_status_tmp = get_row_val(row, '수강료결제', '결제상태', '결제여부', '결제')
+                        if pay_status_tmp == '미결제':
+                            total_unpaid += current_row_total
                     except ValueError:
                         pass
 
@@ -149,19 +156,22 @@ class StudentImportView(APIView):
                 if current_semester_obj:
                     current_semester_obj.new_count = new_count
                     current_semester_obj.total_revenue = total_revenue
+                    current_semester_obj.unpaid_amount = total_unpaid
                     current_semester_obj.save()
                 else:
                     SemesterStatus.objects.create(
                         current_semester=current_semester,
                         new_count=new_count,
-                        total_revenue=total_revenue
+                        total_revenue=total_revenue,
+                        unpaid_amount=total_unpaid
                     )
 
             return Response({
-                "message": f"데이터 처리가 완료되었습니다. (총 {success_count}명, 신규 {new_count}명, 매출액 {total_revenue:,}원)",
+                "message": f"데이터 처리가 완료되었습니다. (총 {success_count}명, 신규 {new_count}명, 매출액 {total_revenue:,}원, 미결제 {total_unpaid:,}원)",
                 "success_count": success_count,
                 "new_count": new_count,
-                "total_revenue": total_revenue
+                "total_revenue": total_revenue,
+                "unpaid_amount": total_unpaid
             })
 
         except Exception as e:

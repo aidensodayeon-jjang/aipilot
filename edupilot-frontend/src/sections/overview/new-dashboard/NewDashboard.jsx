@@ -114,7 +114,12 @@ export default function NewDashboard({ data, apiStats }) {
           />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="미결제 총액" total={`₩${stats.unpaidAmount.toLocaleString()}`} icon="solar:bill-list-bold-duotone" color="#f43f5e" />
+          <SummaryCard 
+            title="미결제 총액" 
+            total={`₩${(apiStats.unpaidAmount || stats.unpaidAmount).toLocaleString()}`} 
+            icon="solar:bill-list-bold-duotone" 
+            color="#f43f5e" 
+          />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
           <SummaryCard title="보강 필요 학생" total={`${apiStats.reservationCount}명`} icon="eva:people-fill" color="#FF5630" />
@@ -179,7 +184,14 @@ NewDashboard.propTypes = {
     paidCount: PropTypes.number,
     unpaidCount: PropTypes.number,
     newCount: PropTypes.number,
-    totalRevenue: PropTypes.number, // ✅ 추가
+    totalRevenue: PropTypes.number,
+    unpaidAmount: PropTypes.number, // ✅ 추가
+    dbStats: PropTypes.shape({
+      payment_data: PropTypes.object,
+      school_data: PropTypes.object,
+      grade_data: PropTypes.array,
+      unpaid_list: PropTypes.array,
+    }),
   }),
 };
 

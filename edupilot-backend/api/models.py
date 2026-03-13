@@ -108,6 +108,7 @@ class SemesterStatus(models.Model):
     call_id = models.CharField(max_length=20, null=True, blank=True) # ✅ 추가
     new_count = models.IntegerField(default=0)  # ✅ 신규 등록 인원 수 저장용
     total_revenue = models.BigIntegerField(default=0)  # ✅ 총 매출액 저장용
+    unpaid_amount = models.BigIntegerField(default=0)  # ✅ 미결제 총액 저장용
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

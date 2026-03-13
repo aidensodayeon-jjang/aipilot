@@ -31,11 +31,13 @@ class DashboardView(APIView):
         progress_percent = 0
         new_student_count = 0
         total_revenue = 0
+        unpaid_amount = 0
 
         # 저장된 신규 인원수 및 총 매출액 가져오기
         if semester_status:
             new_student_count = semester_status.new_count
             total_revenue = semester_status.total_revenue
+            unpaid_amount = semester_status.unpaid_amount
 
         # 2. 상세 통계 집계 (DB 기반)
         # 2-1. 결제 상태 비중 (CourseMaster 기준)
@@ -136,6 +138,7 @@ class DashboardView(APIView):
             "progress_percent": progress_percent,
             "new_student_count": new_student_count,
             "total_revenue": total_revenue,
+            "unpaid_amount": unpaid_amount,
             # 추가된 통계 데이터
             "payment_data": payment_data,
             "school_data": school_data,
