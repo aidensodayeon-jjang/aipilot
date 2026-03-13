@@ -39,6 +39,7 @@ export default function AppView() {
     payment_data: null,
     school_data: null,
     grade_data: null,
+    unpaid_list: null, // ✅ 추가
   });
   const [weekInfo, setWeekInfo] = useState('');
   const [dayInfo, setDayInfo] = useState('');
@@ -80,6 +81,7 @@ export default function AppView() {
           payment_data: result.payment_data,
           school_data: result.school_data,
           grade_data: result.grade_data,
+          unpaid_list: result.unpaid_list, // ✅ 추가
         });
         setWeekInfo(result.week_info || '');
         setDayInfo(result.day_info || '');

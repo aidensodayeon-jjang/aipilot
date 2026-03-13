@@ -78,6 +78,17 @@ class DashboardView(APIView):
             {"label": "기타", "count": others, "percent": round((others / total_students) * 100, 1)},
         ]
 
+        # 2-4. 미결제 학생 리스트 (DB 기반)
+        unpaid_students = CourseMaster.objects.filter(pay='미결제', userid__status='재원생').select_related('userid')[:20]
+        unpaid_list = [{
+            "studentName": item.userid.name,
+            "school": item.userid.school,
+            "grade": item.userid.grade,
+            "course": item.subject,
+            "paymentAmount": 0, # 현재 모델에 개별 금액 필드가 없으므로 0으로 처리하거나 기본값 설정 가능
+            "paymentStatus": "미결제"
+        } for item in unpaid_students]
+
         if current_semester:
             today = date.today()
             try:
@@ -120,5 +131,6 @@ class DashboardView(APIView):
             "payment_data": payment_data,
             "school_data": school_data,
             "grade_data": grade_data,
+            "unpaid_list": unpaid_list,
         }
         return Response(results)

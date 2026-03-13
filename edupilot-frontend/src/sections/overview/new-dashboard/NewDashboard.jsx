@@ -148,7 +148,10 @@ export default function NewDashboard({ data, apiStats }) {
               />
             </Grid>
             <Grid xs={12}>
-              <UnpaidStatus data={data} />
+              <UnpaidStatus 
+                data={data} 
+                dbList={apiStats.dbStats?.unpaid_list} // ✅ 추가
+              />
             </Grid>
           </Grid>
         </Grid>
@@ -308,8 +311,9 @@ GradeAnalysisCard.propTypes = {
   stats: PropTypes.array,
 };
 
-function UnpaidStatus({ data }) {
-  const unpaidStudents = data.filter((student) => student.paymentStatus === '미결제');
+function UnpaidStatus({ data, dbList }) {
+  // DB에서 가져온 목록이 있으면 그것을 사용, 없으면 CSV 데이터에서 추출
+  const unpaidStudents = dbList || data.filter((student) => student.paymentStatus === '미결제');
   const totalUnpaidCount = unpaidStudents.length;
 
   return (
@@ -333,7 +337,7 @@ function UnpaidStatus({ data }) {
               </Box>
               <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="subtitle2" sx={{ color: '#f43f5e', fontWeight: 700 }}>
-                  ₩{student.paymentAmount?.toLocaleString()}
+                  {student.paymentAmount > 0 ? `₩${student.paymentAmount.toLocaleString()}` : '확인필요'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.course}</Typography>
               </Box>
@@ -351,6 +355,7 @@ function UnpaidStatus({ data }) {
 
 UnpaidStatus.propTypes = {
   data: PropTypes.array,
+  dbList: PropTypes.array, // ✅ 추가
 };
 
 function InsightsPanel() {
