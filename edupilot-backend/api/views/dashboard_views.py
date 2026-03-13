@@ -78,16 +78,25 @@ class DashboardView(APIView):
             {"label": "기타", "count": others, "percent": round((others / total_students) * 100, 1)},
         ]
 
-        # 2-4. 미결제 학생 리스트 (DB 기반)
-        unpaid_students = CourseMaster.objects.filter(pay='미결제', userid__status='재원생').select_related('userid')[:20]
-        unpaid_list = [{
-            "studentName": item.userid.name,
-            "school": item.userid.school,
-            "grade": item.userid.grade,
-            "course": item.subject,
-            "paymentAmount": 0, # 현재 모델에 개별 금액 필드가 없으므로 0으로 처리하거나 기본값 설정 가능
-            "paymentStatus": "미결제"
-        } for item in unpaid_students]
+        # 2-4. 미결제 학생 리스트 (DB 기반) - 학생별 중복 제거
+        unpaid_students_query = CourseMaster.objects.filter(pay='미결제', userid__status='재원생').select_related('userid').order_by('userid', 'id')
+        
+        # 학생별로 한 번씩만 리스트에 추가
+        seen_students = set()
+        unpaid_list = []
+        for item in unpaid_students_query:
+            if item.userid_id not in seen_students:
+                unpaid_list.append({
+                    "studentName": item.userid.name,
+                    "school": item.userid.school,
+                    "grade": item.userid.grade,
+                    "course": item.subject,
+                    "paymentAmount": 0,
+                    "paymentStatus": "미결제"
+                })
+                seen_students.add(item.userid_id)
+            if len(unpaid_list) >= 20: # 최대 20명까지만
+                break
 
         if current_semester:
             today = date.today()
