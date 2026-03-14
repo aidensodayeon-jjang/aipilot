@@ -4,7 +4,7 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import datetime
 from ..models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog, SemesterStatus
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from api.utils.message import send_one, send_slack_message
 from api.utils.config import callId
 
@@ -133,9 +133,16 @@ class KioskLookupView(APIView):
         if not input_val or len(input_val) < 4:
             return Response({"error": "전화번호 4자리를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
             
-        base_query = StudentMaster.objects.filter(status='재원생')
-        students = base_query.filter(phone_parent__endswith=input_val) | \
-                   base_query.filter(phone_user__endswith=input_val)
+        # 하이픈 제거한 전화번호 검색 대응
+        from django.db.models.functions import Replace
+        from django.db.models import Value, CharField
+
+        students = StudentMaster.objects.filter(status='재원생').annotate(
+            pure_phone_parent=Replace('phone_parent', Value('-'), Value(''), output_field=CharField()),
+            pure_phone_user=Replace('phone_user', Value('-'), Value(''), output_field=CharField())
+        ).filter(
+            Q(pure_phone_parent__endswith=input_val) | Q(pure_phone_user__endswith=input_val)
+        )
         
         if not students.exists():
             return Response({"error": "등록된 학생을 찾을 수 없습니다. (재원생 전용)"}, status=status.HTTP_404_NOT_FOUND)
@@ -213,6 +220,11 @@ class KioskCheckInView(APIView):
                 send_slack_message(slack_text)
             except: pass
             
-            return Response({"success": True, "class_name": class_name, "check_in_time": check_in_time_str})
+            return Response({
+                "success": True, 
+                "class_name": class_name, 
+                "classroom": current_class.classroom if current_class else "1",
+                "check_in_time": check_in_time_str
+            })
         except Exception as e:
             return Response({"error": str(e)}, status=500)
