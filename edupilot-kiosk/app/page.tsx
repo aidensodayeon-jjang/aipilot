@@ -94,14 +94,16 @@ export default function KioskPage() {
         body: JSON.stringify({ input })
       });
 
-      const found = await response.json();
-
+      // 1. 응답이 성공적이지 않은 경우 처리
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         if (response.status === 404) {
-          throw new Error('학생을 찾을 수 없습니다.');
+          throw new Error(errorData.error || '등록된 학생을 찾을 수 없습니다.');
         }
-        throw new Error('서버 오류가 발생했습니다.');
+        throw new Error(errorData.error || '서버 오류가 발생했습니다.');
       }
+
+      const found = await response.json();
 
       if (!found || found.length === 0) {
         throw new Error('학생을 찾을 수 없습니다.');

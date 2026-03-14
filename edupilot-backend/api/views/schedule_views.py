@@ -128,7 +128,7 @@ class KioskLookupView(APIView):
                    base_query.filter(phone_user__endswith=input_val)
         
         if not students.exists():
-            return Response({"error": "학생을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "등록된 학생을 찾을 수 없습니다. (재원생 전용)"}, status=status.HTTP_404_NOT_FOUND)
             
         now = timezone.now()
         day_of_week = now.strftime('%A')
