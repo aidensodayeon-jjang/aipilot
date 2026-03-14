@@ -113,7 +113,8 @@ class AttendanceLogView(APIView):
             try:
                 status_kor = "출석" if status_val == 'present' else "결석"
                 emoji = "✅" if status_val == 'present' else "❌"
-                slack_text = f"{emoji} *[관리자 수동 {status_kor}]* {student.name} 학생\n- 수업: {course_class.subject_name if course_class else '자습/방문'}\n- 날짜: {date_str}"
+                room_info = f"{course_class.classroom}강의실" if course_class and course_class.classroom else "강의실미지정"
+                slack_text = f"{emoji} *[수동 {status_kor}]* {student.name} 학생\n- {course_class.subject_name if course_class else '자습/방문'} ({room_info}, {date_str})"
                 send_slack_message(slack_text)
             except: pass
 
@@ -206,7 +207,9 @@ class KioskCheckInView(APIView):
             
             # ✅ 슬랙 알림 추가
             try:
-                slack_text = f"🔔 *[출석]* {student.name} 학생이 등원하였습니다.\n- 수업: {class_name}\n- 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+                # 강의실 정보 가져오기
+                room_info = f"{current_class.classroom}강의실" if current_class and current_class.classroom else "강의실미지정"
+                slack_text = f"🔔 *[출석]* {student.name} 학생 등원\n- {class_name} ({room_info}, {now.strftime('%H:%M:%S')})"
                 send_slack_message(slack_text)
             except: pass
             
