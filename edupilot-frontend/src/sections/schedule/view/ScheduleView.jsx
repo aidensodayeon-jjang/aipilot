@@ -62,7 +62,10 @@ export default function ScheduleView() {
 
   const fetchScheduleData = useCallback(async () => {
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       
       // 1. 전체 시간표 구조 가져오기
       const scheduleRes = await fetchWithToken('/api/schedule/structure/', {}, navigate);
@@ -138,7 +141,7 @@ export default function ScheduleView() {
           student_id: student.id,
           class_id: classInfo.classId,
           action,
-          date: selectedDate.toISOString().split('T')[0], // ✅ 선택된 날짜 전송
+          date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`,
         }),
       });
 

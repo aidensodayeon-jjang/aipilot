@@ -50,50 +50,68 @@ class AttendanceLogView(APIView):
         if not date_str:
             return Response({"error": "Date is required"}, status=400)
         
-        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        logs = AttendanceLog.objects.filter(check_in_time__date=target_date)
-        
-        result = [{
-            "id": log.id,
-            "student_id": log.student.id if log.student else None,
-            "student_name": log.student.name if log.student else "Unknown",
-            "class_id": log.course_class.id if log.course_class else None,
-            "status": log.status,
-            "check_in_time": log.check_in_time
-        } for log in logs]
-        
-        return Response(result)
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            # 해당 날짜의 시작(00:00:00)과 끝(23:59:59) 범위 설정 (Timezone 안전)
+            start_dt = timezone.make_aware(datetime.combine(target_date, datetime.min.time()))
+            end_dt = timezone.make_aware(datetime.combine(target_date, datetime.max.time()))
+            
+            logs = AttendanceLog.objects.filter(check_in_time__range=(start_dt, end_dt))
+            
+            result = [{
+                "id": log.id,
+                "student_id": log.student.id if log.student else None,
+                "student_name": log.student.name if log.student else "Unknown",
+                "class_id": log.course_class.id if log.course_class else None,
+                "status": log.status,
+                "check_in_time": log.check_in_time.isoformat()
+            } for log in logs]
+            
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
     def post(self, request):
         student_id = request.data.get('student_id')
         class_id = request.data.get('class_id')
         action = request.data.get('action')
         date_str = request.data.get('date') or timezone.now().strftime('%Y-%m-%d')
-        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         
         try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             student = StudentMaster.objects.get(id=student_id)
-            course_class = CourseClass.objects.get(id=class_id)
+            course_class = CourseClass.objects.get(id=class_id) if class_id else None
             
+            # 해당 날짜 범위 설정
+            start_dt = timezone.make_aware(datetime.combine(target_date, datetime.min.time()))
+            end_dt = timezone.make_aware(datetime.combine(target_date, datetime.max.time()))
+
             if action == 'reset':
-                AttendanceLog.objects.filter(student=student, course_class=course_class, check_in_time__date=target_date).delete()
+                AttendanceLog.objects.filter(
+                    student=student, 
+                    course_class=course_class, 
+                    check_in_time__range=(start_dt, end_dt)
+                ).delete()
                 return Response({"message": "Reset successful"})
                 
             status_val = 'present' if action == 'present' else 'absent'
-            check_in_dt = timezone.make_aware(datetime.combine(target_date, course_class.start_time))
+            # 기록용 시각 설정 (수업 시작 시각 또는 현재 시각)
+            check_in_dt = timezone.make_aware(datetime.combine(target_date, course_class.start_time if course_class else datetime.now().time()))
 
             log, created = AttendanceLog.objects.update_or_create(
                 student=student,
                 course_class=course_class,
-                check_in_time__date=target_date,
+                check_in_time__range=(start_dt, end_dt),
                 defaults={
                     'status': status_val,
                     'method': 'Manual',
-                    'check_in_time': check_in_dt
+                    'check_in_time': check_in_dt # update_or_create 시에도 정확한 시각 유지
                 }
             )
             return Response({"message": "Updated successful", "status": status_val})
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=400)
 
 class KioskLookupView(APIView):
@@ -148,10 +166,14 @@ class KioskCheckInView(APIView):
             class_name = current_class.subject_name if current_class else "자습/방문"
             check_in_time_str = now.strftime('%H:%M')
 
-            log, created = AttendanceLog.objects.get_or_create(
+            # 해당 날짜 범위 설정 (중복 방지용)
+            start_dt = timezone.make_aware(datetime.combine(now.date(), datetime.min.time()))
+            end_dt = timezone.make_aware(datetime.combine(now.date(), datetime.max.time()))
+
+            log, created = AttendanceLog.objects.update_or_create(
                 student=student,
                 course_class=current_class,
-                check_in_time__date=now.date(),
+                check_in_time__range=(start_dt, end_dt),
                 defaults={'check_in_time': now, 'method': 'Kiosk', 'status': 'present'}
             )
 
