@@ -18,19 +18,28 @@ class MessageView(APIView):
         if not date_str:
             return Response({"error": "Date is required"}, status=400)
         
-        # 해당 날짜의 발송 로그 조회
-        logs = MessageLog.objects.filter(created_at__date=date_str).select_related('student')
-        
-        result = [{
-            "id": log.id,
-            "student_name": log.student.name if log.student else "직접입력",
-            "receiver": log.receiver,
-            "content": log.content,
-            "status": log.status,
-            "created_at": log.created_at.strftime('%Y-%m-%d %H:%M:%S')
-        } for log in logs]
-        
-        return Response(result)
+        try:
+            from django.utils import timezone
+            from datetime import datetime
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            start_dt = timezone.make_aware(datetime.combine(target_date, datetime.min.time()))
+            end_dt = timezone.make_aware(datetime.combine(target_date, datetime.max.time()))
+
+            # 해당 날짜 범위의 발송 로그 조회
+            logs = MessageLog.objects.filter(created_at__range=(start_dt, end_dt)).select_related('student').order_by('-created_at')
+            
+            result = [{
+                "id": log.id,
+                "student_name": log.student.name if log.student else "직접입력",
+                "receiver": log.receiver,
+                "content": log.content,
+                "status": log.status,
+                "created_at": timezone.localtime(log.created_at).strftime('%Y-%m-%d %H:%M:%S')
+            } for log in logs]
+            
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
     def post(self, request):
         content = request.data.get("content", None)

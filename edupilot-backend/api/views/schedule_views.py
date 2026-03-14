@@ -155,7 +155,7 @@ class KioskCheckInView(APIView):
     
     def post(self, request):
         student_id = request.data.get('student_id')
-        now = timezone.now()
+        now = timezone.localtime() # ✅ timezone.now() 대신 localtime() 사용
         day_of_week = now.strftime('%A')
         
         try:
