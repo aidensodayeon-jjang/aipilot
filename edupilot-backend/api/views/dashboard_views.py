@@ -1,4 +1,5 @@
-from datetime import date, datetime
+from datetime import date
+from django.utils import timezone
 from django.db.models import Count, Q
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -8,19 +9,22 @@ from api.models import Attend, StudentMaster, AcademicSemester, SemesterStatus, 
 
 
 from rest_framework.decorators import authentication_classes, permission_classes
-...
+
 class DashboardView(APIView):
     # 인증과 권한을 명시적으로 비움
     permission_classes = [AllowAny]
     authentication_classes = [] 
 
     def get(self, request):
-        # 1. 학기 및 요일 정보
+        # 1. 학기 및 요일 정보 (한국 시간 기준)
+        now_local = timezone.localtime()
+        today = now_local.date()
+
         current_semester = AcademicSemester.objects.filter(is_current=True).first()
         semester_status = SemesterStatus.objects.first()
-        
+
         week_info = "학기 정보 없음"
-        day_info = datetime.now().strftime("%A")
+        day_info = now_local.strftime("%A")
         day_map = {
             'Monday': '월요일', 'Tuesday': '화요일', 'Wednesday': '수요일',
             'Thursday': '목요일', 'Friday': '금요일', 'Saturday': '토요일', 'Sunday': '일요일'
@@ -101,7 +105,6 @@ class DashboardView(APIView):
                 break
 
         if current_semester:
-            today = date.today()
             try:
                 total_days = (current_semester.end_date - current_semester.start_date).days
                 elapsed_days = (today - current_semester.start_date).days
