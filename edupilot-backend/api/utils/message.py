@@ -62,3 +62,34 @@ def send_one(data):
 def send_message(data):
     res = send_one(data)
     return [res.status_code, res]
+
+
+def send_slack_message(text, channel=None):
+    """슬랙 채널로 메시지 전송"""
+    from django.conf import settings
+    
+    token = getattr(settings, 'SLACK_BOT_TOKEN', None)
+    default_channel = getattr(settings, 'SLACK_CHANNEL_ID', None)
+    
+    if not token or not (channel or default_channel):
+        return None
+        
+    url = "https://slack.com/api/chat.postMessage"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8"
+    }
+    payload = {
+        "channel": channel or default_channel,
+        "text": text
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        res_json = response.json()
+        if not res_json.get("ok"):
+            print(f"❌ Slack API Error: {res_json.get('error')}")
+        return res_json
+    except Exception as e:
+        print(f"❌ Slack Connection Error: {e}")
+        return None

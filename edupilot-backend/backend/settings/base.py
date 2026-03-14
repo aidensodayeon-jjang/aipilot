@@ -40,7 +40,7 @@ SECRET_KEY = get_secret("SECRET_KEY")
 
 # Slack settings
 SLACK_BOT_TOKEN = secrets.get("SLACK_BOT_TOKEN")
-SLACK_CHANNEL_ID = secrets.get("SLACK_CHANNEL_ID", "CF2JWA4AC")
+SLACK_CHANNEL_ID = secrets.get("SLACK_CHANNEL_ID", "C03U241L079")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

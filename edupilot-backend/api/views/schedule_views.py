@@ -5,7 +5,7 @@ from django.utils import timezone
 from datetime import datetime
 from ..models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog, SemesterStatus
 from django.db.models import Prefetch
-from api.utils.message import send_one
+from api.utils.message import send_one, send_slack_message
 from api.utils.config import callId
 
 class ScheduleStructureView(APIView):
@@ -108,6 +108,15 @@ class AttendanceLogView(APIView):
                     'check_in_time': check_in_dt # update_or_create 시에도 정확한 시각 유지
                 }
             )
+
+            # ✅ 슬랙 알림 추가 (수동 처리)
+            try:
+                status_kor = "출석" if status_val == 'present' else "결석"
+                emoji = "✅" if status_val == 'present' else "❌"
+                slack_text = f"{emoji} *[관리자 수동 {status_kor}]* {student.name} 학생\n- 수업: {course_class.subject_name if course_class else '자습/방문'}\n- 날짜: {date_str}"
+                send_slack_message(slack_text)
+            except: pass
+
             return Response({"message": "Updated successful", "status": status_val})
         except Exception as e:
             import traceback
@@ -194,6 +203,12 @@ class KioskCheckInView(APIView):
                     send_one(message_data)
                     MessageLog.objects.create(student=student, sender=final_call_id, receiver=student.phone_parent, content=content, status='success')
                 except: pass
+            
+            # ✅ 슬랙 알림 추가
+            try:
+                slack_text = f"🔔 *[출석]* {student.name} 학생이 등원하였습니다.\n- 수업: {class_name}\n- 시간: {now.strftime('%Y-%m-%d %H:%M:%S')}"
+                send_slack_message(slack_text)
+            except: pass
             
             return Response({"success": True, "class_name": class_name, "check_in_time": check_in_time_str})
         except Exception as e:
