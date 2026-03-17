@@ -50,9 +50,6 @@ const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
           fontFamily: (theme) => theme.typography.fontFamily,
         }}
       >
-        <Box component="span" sx={{ color: '#1e293b', mr: 0.5 }}>
-          MOKDONG
-        </Box>
         <Box component="span" sx={{ color: '#6366f1' }}>
           EDUPILOT
         </Box>

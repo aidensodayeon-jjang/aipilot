@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -15,8 +16,9 @@ import Chart, { useChart } from 'src/components/chart';
 // ----------------------------------------------------------------------
 
 export default function NewDashboard({ data, apiStats }) {
+  const navigate = useNavigate();
+
   const stats = useMemo(() => {
-    // 1. 기본적으로 로컬 파일 데이터 계산
     const totalStudents = data.length;
     const totalRevenue = data.reduce((acc, curr) => acc + curr.paymentAmount, 0);
     const unpaidAmount = data
@@ -24,14 +26,13 @@ export default function NewDashboard({ data, apiStats }) {
       .reduce((acc, curr) => acc + curr.paymentAmount, 0);
     const newStudents = data.filter((d) => d.isNew).length;
 
-    // 2. 만약 API(DB)에서 온 값이 있으면 덮어씌움
     return {
       totalStudents: apiStats.userCount || totalStudents,
       totalRevenue: apiStats.totalRevenue !== undefined ? apiStats.totalRevenue : totalRevenue,
       unpaidAmount: apiStats.unpaidAmount !== undefined ? apiStats.unpaidAmount : unpaidAmount,
       newStudents: apiStats.newCount || newStudents,
     };
-  }, [data, apiStats]); // ✅ apiStats 추가
+  }, [data, apiStats]);
 
   const paymentStatusData = useMemo(() => {
     if (apiStats.dbStats?.payment_data) {
@@ -46,7 +47,7 @@ export default function NewDashboard({ data, apiStats }) {
       labels: ['결제완료', '미결제', 'PASS'],
       series: [statusCounts['결제완료'] || 0, statusCounts['미결제'] || 0, statusCounts.PASS || 0],
     };
-  }, [data, apiStats]); // ✅ apiStats 추가
+  }, [data, apiStats]);
 
   const schoolData = useMemo(() => {
     if (apiStats.dbStats?.school_data) {
@@ -65,7 +66,7 @@ export default function NewDashboard({ data, apiStats }) {
       labels: sorted.map((s) => s[0]),
       series: sorted.map((s) => s[1]),
     };
-  }, [data, apiStats]); // ✅ apiStats 추가
+  }, [data, apiStats]);
 
   const gradeStats = useMemo(() => {
     if (apiStats.dbStats?.grade_data) {
@@ -90,7 +91,7 @@ export default function NewDashboard({ data, apiStats }) {
       { label: '중등부 (1-3학년)', count: middle, percent: (middle / total) * 100, color: 'info' },
       { label: '기타', count: others, percent: (others / total) * 100, color: 'warning' },
     ];
-  }, [data, apiStats]); // ✅ apiStats 추가
+  }, [data, apiStats]);
 
   return (
     <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 2 }}>
@@ -99,16 +100,29 @@ export default function NewDashboard({ data, apiStats }) {
         <Grid xs={12} sm={6} md={4}>
           <SummaryCard 
             title="이번 달 신규 등록" 
-            total={`${apiStats.newCount || 0}명`} // ✅ 백엔드 실시간 데이터 사용
+            total={`${apiStats.newCount || 0}명`}
             icon="solar:user-plus-bold-duotone" 
             color="#6366f1" 
+            onClick={() => navigate('/students/재원생')}
           />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="총 재원생" total={`${apiStats.userCount}명`} icon="solar:users-group-two-rounded-bold-duotone" color="#3b82f6" />
+          <SummaryCard 
+            title="총 재원생" 
+            total={`${apiStats.userCount}명`} 
+            icon="solar:users-group-two-rounded-bold-duotone" 
+            color="#3b82f6" 
+            onClick={() => navigate('/students/재원생')}
+          />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="신규 상담중" total={`${apiStats.consultingCount}건`} icon="solar:chat-round-dots-bold-duotone" color="#C684FF" />
+          <SummaryCard 
+            title="신규 상담중" 
+            total={`${apiStats.consultingCount}건`} 
+            icon="solar:chat-round-dots-bold-duotone" 
+            color="#C684FF" 
+            onClick={() => navigate('/students/상담중')}
+          />
         </Grid>
 
         {/* Row 2: Financials & Operational Stats */}
@@ -126,10 +140,17 @@ export default function NewDashboard({ data, apiStats }) {
             total={`₩${(apiStats.unpaidAmount || stats.unpaidAmount).toLocaleString()}`} 
             icon="solar:bill-list-bold-duotone" 
             color="#f43f5e" 
+            onClick={() => navigate('/students/재원생')}
           />
         </Grid>
         <Grid xs={12} sm={6} md={4}>
-          <SummaryCard title="보강 필요 학생" total={`${apiStats.reservationCount}명`} icon="eva:people-fill" color="#FF5630" />
+          <SummaryCard 
+            title="보강 필요 학생" 
+            total={`${apiStats.reservationCount}명`} 
+            icon="eva:people-fill" 
+            color="#FF5630" 
+            onClick={() => navigate('/attend')}
+          />
         </Grid>
 
         {/* Main Content Layout */}
@@ -162,7 +183,7 @@ export default function NewDashboard({ data, apiStats }) {
             <Grid xs={12}>
               <UnpaidStatus 
                 data={data} 
-                dbList={apiStats.dbStats?.unpaid_list} // ✅ 추가
+                dbList={apiStats.dbStats?.unpaid_list}
               />
             </Grid>
           </Grid>
@@ -192,7 +213,7 @@ NewDashboard.propTypes = {
     unpaidCount: PropTypes.number,
     newCount: PropTypes.number,
     totalRevenue: PropTypes.number,
-    unpaidAmount: PropTypes.number, // ✅ 추가
+    unpaidAmount: PropTypes.number,
     dbStats: PropTypes.shape({
       payment_data: PropTypes.object,
       school_data: PropTypes.object,
@@ -204,9 +225,25 @@ NewDashboard.propTypes = {
 
 // ----------------------------------------------------------------------
 
-function SummaryCard({ title, total, icon, color }) {
+function SummaryCard({ title, total, icon, color, onClick }) {
   return (
-    <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+    <Card 
+      onClick={onClick}
+      sx={{ 
+        p: 3, 
+        borderRadius: '16px', 
+        border: '1px solid #f1f5f9', 
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.2s',
+        '&:hover': onClick ? {
+          bgcolor: alpha(color, 0.02),
+          transform: 'translateY(-2px)',
+          boxShadow: '0 12px 24px -4px rgba(0, 0, 0, 0.12)',
+          borderColor: alpha(color, 0.2),
+        } : {},
+      }}
+    >
       <Stack direction="row" alignItems="center" spacing={2.5}>
         <Box
           sx={{
@@ -240,6 +277,7 @@ SummaryCard.propTypes = {
   total: PropTypes.string,
   icon: PropTypes.string,
   color: PropTypes.string,
+  onClick: PropTypes.func,
 };
 
 function ChartCard({ title, chart }) {
@@ -331,7 +369,6 @@ GradeAnalysisCard.propTypes = {
 };
 
 function UnpaidStatus({ data, dbList }) {
-  // DB에서 가져온 목록이 있으면 그것을 사용, 없으면 CSV 데이터에서 추출
   const unpaidStudents = dbList || data.filter((student) => student.paymentStatus === '미결제');
   const totalUnpaidCount = unpaidStudents.length;
 
@@ -374,7 +411,7 @@ function UnpaidStatus({ data, dbList }) {
 
 UnpaidStatus.propTypes = {
   data: PropTypes.array,
-  dbList: PropTypes.array, // ✅ 추가
+  dbList: PropTypes.array,
 };
 
 function InsightsPanel() {

@@ -42,6 +42,7 @@ export default function AppView() {
     grade_data: null,
     unpaid_list: null, // ✅ 추가
   });
+  const [dashboardTasks, setDashboardTasks] = useState(null);
   const [weekInfo, setWeekInfo] = useState('');
   const [dayInfo, setDayInfo] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -88,6 +89,7 @@ export default function AppView() {
         setWeekInfo(result.week_info || '');
         setDayInfo(result.day_info || '');
         setProgressPercent(result.progress_percent || 0);
+        setDashboardTasks(result.tasks || null);
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
@@ -191,20 +193,7 @@ export default function AppView() {
           <Grid xs={12} md={8}>
             <AppTasks
               title="업무 및 피드백 관리"
-              initialTasks={{
-                short: [
-                  { id: '1', name: '오늘 학부모 상담 전화 3건', completed: false },
-                  { id: '2', name: '보강 일정 확정 및 안내', completed: true },
-                ],
-                mid: [
-                  { id: '3', name: '3월 학기 시간표 초안 작성', completed: false },
-                  { id: '4', name: '신규 교재 선정 및 발주', completed: false },
-                ],
-                feedback: [
-                  { id: '5', name: '김민준: 파이썬 조건문 이해도 낮음, 추가 과제 필요', completed: false },
-                  { id: '6', name: '이서연: 알고리즘 문제 풀이 속도 향상됨', completed: false },
-                ]
-              }}
+              initialTasks={dashboardTasks}
             />
           </Grid>
 

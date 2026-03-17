@@ -10,8 +10,9 @@ import { NAV, HEADER } from './config-layout';
 
 const SPACING = 8;
 
-export default function Main({ children, sx, ...other }) {
+export default function Main({ children, isNavCollapsed, sx, ...other }) {
   const lgUp = useResponsive('up', 'lg');
+  const navWidth = isNavCollapsed ? NAV.COLLAPSED_WIDTH : NAV.WIDTH;
 
   return (
     <Box
@@ -25,7 +26,11 @@ export default function Main({ children, sx, ...other }) {
         ...(lgUp && {
           px: 2,
           py: `${HEADER.H_DESKTOP + SPACING}px`,
-          width: `calc(100% - ${NAV.WIDTH}px)`,
+          width: `calc(100% - ${navWidth}px)`,
+          transition: (theme) =>
+            theme.transitions.create(['width', 'margin'], {
+              duration: theme.transitions.duration.shorter,
+            }),
         }),
         ...sx,
       }}

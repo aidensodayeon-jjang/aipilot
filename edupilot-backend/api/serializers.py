@@ -1,7 +1,18 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from api.models import User, StudentMaster, CourseMaster, Attend, History, SlackLogNew, RecommendedItem, TeacherFeedback, Announcement
+from api.models import (
+    User,
+    StudentMaster,
+    CourseMaster,
+    Attend,
+    History,
+    SlackLogNew,
+    RecommendedItem,
+    TeacherFeedback,
+    Announcement,
+    DashboardTask,
+)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -102,6 +113,12 @@ class TeacherFeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherFeedback
         fields = ['id', 'student', 'student_name', 'semester', 'week', 'teacher', 'content']
+
+
+class DashboardTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DashboardTask
+        fields = '__all__'
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):

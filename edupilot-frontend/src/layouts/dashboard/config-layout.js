@@ -7,5 +7,6 @@ export const HEADER = {
 };
 
 export const NAV = {
-  WIDTH: 280,
+  WIDTH: 240,
+  COLLAPSED_WIDTH: 88,
 };

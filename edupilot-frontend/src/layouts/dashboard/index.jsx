@@ -11,10 +11,19 @@ import Header from './header';
 
 export default function DashboardLayout({ children }) {
   const [openNav, setOpenNav] = useState(false);
+  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
+
+  const onToggleCollapse = () => {
+    setIsNavCollapsed(!isNavCollapsed);
+  };
 
   return (
     <>
-      <Header onOpenNav={() => setOpenNav(true)} />
+      <Header 
+        onOpenNav={() => setOpenNav(true)} 
+        isNavCollapsed={isNavCollapsed}
+        onToggleCollapse={onToggleCollapse}
+      />
 
       <Box
         sx={{
@@ -23,9 +32,14 @@ export default function DashboardLayout({ children }) {
           flexDirection: { xs: 'column', lg: 'row' },
         }}
       >
-        <Nav openNav={openNav} onCloseNav={() => setOpenNav(false)} />
+        <Nav 
+          openNav={openNav} 
+          onCloseNav={() => setOpenNav(false)} 
+          isNavCollapsed={isNavCollapsed}
+          onToggleCollapse={onToggleCollapse}
+        />
 
-        <Main>{children}</Main>
+        <Main isNavCollapsed={isNavCollapsed}>{children}</Main>
       </Box>
     </>
   );

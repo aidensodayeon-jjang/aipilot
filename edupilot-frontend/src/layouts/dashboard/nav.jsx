@@ -4,13 +4,17 @@ import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Drawer from '@mui/material/Drawer';
-import { alpha } from '@mui/material/styles';
+import { alpha, useTheme } from '@mui/material/styles';
 import ListItemButton from '@mui/material/ListItemButton';
 import List from '@mui/material/List';
 import Collapse from '@mui/material/Collapse';
 import ListItemText from '@mui/material/ListItemText';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import IconButton from '@mui/material/IconButton';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import Tooltip from '@mui/material/Tooltip';
 
 import { usePathname } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
@@ -30,10 +34,13 @@ const icon = (name) => (
 );
 
 
-export default function Nav({ openNav, onCloseNav }) {
+export default function Nav({ openNav, onCloseNav, isNavCollapsed, onToggleCollapse }) {
+  const theme = useTheme();
   const pathname = usePathname();
   const upLg = useResponsive('up', 'lg');
   const [navConfig, setNavConfig] = useState(navConfigData);
+
+  const navWidth = isNavCollapsed ? NAV.COLLAPSED_WIDTH : NAV.WIDTH;
 
   useEffect(() => {
     const studentStatusSubMenu = [
@@ -44,12 +51,9 @@ export default function Nav({ openNav, onCloseNav }) {
         { title: '⚠️ 미처리', path: '/students/unprocessed' },
     ];
 
-    // 기존 메뉴에서 상담 관리만 제거
     const filteredNavConfig = navConfigData.filter(item => item.title !== '상담 관리');
-    
-    // '원생 관리' 찾아서 제거 (나중에 원하는 위치에 넣기 위함)
     const userMenu = filteredNavConfig.find(item => item.title === '원생 관리');
-    const finalNavConfig = filteredNavConfig.filter(item => item.title !== '원생 관리');
+    const restNavConfig = filteredNavConfig.filter(item => item.title !== '원생 관리');
 
     const studentStatusMenu = {
         title: '학생 현황',
@@ -58,17 +62,13 @@ export default function Nav({ openNav, onCloseNav }) {
         children: studentStatusSubMenu,
     };
 
-    // 순서 조정: [대시보드] -> [원생 관리] -> [학생 현황] -> [나머지]
-    // 1. 대시보드 뒤에 '원생 관리' 삽입 (인덱스 1)
+    const finalNavConfig = [...restNavConfig];
     if (userMenu) {
         finalNavConfig.splice(1, 0, userMenu);
     }
-    
-    // 2. 그 뒤에 '학생 현황' 삽입 (인덱스 2)
     finalNavConfig.splice(2, 0, studentStatusMenu);
     
     setNavConfig(finalNavConfig);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -76,7 +76,6 @@ export default function Nav({ openNav, onCloseNav }) {
     if (openNav) {
       onCloseNav();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   const renderContent = (
@@ -91,13 +90,13 @@ export default function Nav({ openNav, onCloseNav }) {
         },
       }}
     >
-      <Box sx={{ px: 2.5, py: 3, display: 'inline-flex' }}>
-        <Logo sx={{ width: 140 }} />
+      <Box sx={{ px: 2.5, py: 3, display: 'flex', alignItems: 'center', justifyContent: isNavCollapsed ? 'center' : 'flex-start' }}>
+        <Logo sx={{ width: isNavCollapsed ? 40 : 130, transition: 'all 0.2s' }} />
       </Box>
 
-      <Stack component="nav" spacing={0.5} sx={{ px: 2 }}>
+      <Stack component="nav" spacing={0.5} sx={{ px: isNavCollapsed ? 1.5 : 2 }}>
         {navConfig.map((item) => (
-          <NavItem key={item.title} item={item} depth={0} />
+          <NavItem key={item.title} item={item} depth={0} isNavCollapsed={isNavCollapsed} />
         ))}
       </Stack>
 
@@ -109,7 +108,11 @@ export default function Nav({ openNav, onCloseNav }) {
     <Box
       sx={{
         flexShrink: { lg: 0 },
-        width: { lg: NAV.WIDTH },
+        width: { lg: navWidth },
+        transition: (theme) =>
+          theme.transitions.create('width', {
+            duration: theme.transitions.duration.shorter,
+          }),
       }}
     >
       {upLg ? (
@@ -117,11 +120,38 @@ export default function Nav({ openNav, onCloseNav }) {
           sx={{
             height: 1,
             position: 'fixed',
-            width: NAV.WIDTH,
+            width: navWidth,
             borderRight: '1px solid #f1f5f9',
             boxShadow: '4px 0 24px 0 rgba(0, 0, 0, 0.02)',
+            transition: (theme) =>
+              theme.transitions.create('width', {
+                duration: theme.transitions.duration.shorter,
+              }),
           }}
         >
+          {/* 플로팅 토글 버튼 */}
+          <IconButton
+            onClick={onToggleCollapse}
+            size="small"
+            sx={{
+              p: 0.5,
+              top: 32,
+              position: 'absolute',
+              right: -12,
+              zIndex: 1101, // AppBar보다 높거나 비슷하게
+              bgcolor: 'white',
+              border: '1px solid #f1f5f9',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              '&:hover': { bgcolor: '#f8fafc' },
+            }}
+          >
+            {isNavCollapsed ? (
+              <ChevronRightIcon sx={{ width: 16, height: 16, color: '#6366f1' }} />
+            ) : (
+              <ChevronLeftIcon sx={{ width: 16, height: 16, color: '#6366f1' }} />
+            )}
+          </IconButton>
+
           {renderContent}
         </Box>
       ) : (
@@ -146,20 +176,21 @@ export default function Nav({ openNav, onCloseNav }) {
 Nav.propTypes = {
   openNav: PropTypes.bool,
   onCloseNav: PropTypes.func,
+  isNavCollapsed: PropTypes.bool,
+  onToggleCollapse: PropTypes.func,
 };
 
 // ----------------------------------------------------------------------
 
-function NavItem({ item, depth }) {
+function NavItem({ item, depth, isNavCollapsed }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // 현재 경로가 자식 경로 중 하나인 경우 메뉴를 열어둠
   const active = item.path === pathname || (item.children && item.children.some(child => child.path === pathname));
   const hasChildren = item.children && item.children.length > 0;
 
   const handleClick = () => {
-    if (hasChildren) {
+    if (hasChildren && !isNavCollapsed) {
       setOpen(!open);
     }
   };
@@ -182,43 +213,72 @@ function NavItem({ item, depth }) {
     },
   };
 
-  if (hasChildren) {
+  const renderItem = (
+    <ListItemButton
+      component={item.path && !hasChildren ? RouterLink : 'div'}
+      to={item.path && !hasChildren ? item.path : undefined}
+      onClick={handleClick}
+      sx={{
+        minHeight: depth > 0 ? 48 : 52,
+        borderRadius: 1.5,
+        color: active ? (depth > 0 && !hasChildren ? '#6366f1' : '#1e293b') : '#64748b',
+        fontWeight: active ? 700 : 500,
+        mb: 0.8,
+        transition: 'all 0.2s',
+        position: 'relative',
+        pl: isNavCollapsed ? 0 : (depth > 0 ? 6.5 : 2.5),
+        justifyContent: isNavCollapsed ? 'center' : 'flex-start',
+        ...(active && !hasChildren && activeStyle),
+        ...(active && hasChildren && { bgcolor: alpha('#6366f1', 0.04) }),
+        '&:hover': {
+          bgcolor: '#f8fafc',
+          color: '#1e293b',
+        },
+      }}
+    >
+      <Box component="span" sx={{ 
+        width: 24, 
+        height: 24, 
+        mr: isNavCollapsed ? 0 : 2, 
+        color: active ? '#6366f1' : 'inherit',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        {item.icon}
+      </Box>
+
+      {!isNavCollapsed && (
+        <ListItemText 
+          primary={item.title} 
+          primaryTypographyProps={{ 
+            variant: 'body1',
+            fontWeight: 'inherit',
+            fontSize: depth > 0 ? 14 : 15.5 
+          }} 
+        />
+      )}
+
+      {!isNavCollapsed && hasChildren && (
+        open ? <ExpandLess sx={{ width: 20 }} /> : <ExpandMore sx={{ width: 20 }} />
+      )}
+    </ListItemButton>
+  );
+
+  const content = isNavCollapsed && depth === 0 ? (
+    <Tooltip title={item.title} placement="right" arrow>
+      {renderItem}
+    </Tooltip>
+  ) : renderItem;
+
+  if (hasChildren && !isNavCollapsed) {
     return (
       <>
-        <ListItemButton
-          onClick={handleClick}
-          sx={{
-            minHeight: 52, // 높이 증가
-            borderRadius: 1.5,
-            color: active ? '#1e293b' : '#64748b',
-            fontWeight: active ? 700 : 500,
-            mb: 0.8,
-            transition: 'all 0.2s',
-            pl: 2.5, // 패딩 증가
-            ...(active && { bgcolor: alpha('#6366f1', 0.04) }),
-            '&:hover': {
-              bgcolor: '#f8fafc',
-              color: '#1e293b',
-            },
-          }}
-        >
-          <Box component="span" sx={{ width: 24, height: 24, mr: 2, color: active ? '#6366f1' : 'inherit' }}>
-            {item.icon}
-          </Box>
-          <ListItemText 
-            primary={item.title} 
-            primaryTypographyProps={{ 
-              variant: 'body1', // 글자 크기 증가
-              fontWeight: 'inherit',
-              fontSize: 15.5 
-            }} 
-          />
-          {open ? <ExpandLess sx={{ width: 20 }} /> : <ExpandMore sx={{ width: 20 }} />}
-        </ListItemButton>
-        <Collapse in={open} timeout="auto" unmountOnExit>
+        {content}
+        <Collapse in={open} timeout="auto" unmountOfExit>
           <List component="div" disablePadding sx={{ mb: 1 }}>
             {item.children.map((child) => (
-              <NavItem key={child.title} item={child} depth={depth + 1} />
+              <NavItem key={child.title} item={child} depth={depth + 1} isNavCollapsed={isNavCollapsed} />
             ))}
           </List>
         </Collapse>
@@ -226,50 +286,11 @@ function NavItem({ item, depth }) {
     );
   }
 
-  const isSubItem = depth > 0;
-  const currentActive = pathname === item.path;
-
-  return (
-    <ListItemButton
-      component={RouterLink}
-      to={item.path}
-      sx={{
-        minHeight: isSubItem ? 48 : 52, // 서브메뉴와 메인메뉴 높이 최적화
-        borderRadius: 1.5,
-        color: currentActive ? '#6366f1' : '#64748b',
-        fontWeight: currentActive ? 700 : 500,
-        mb: 0.8,
-        transition: 'all 0.2s',
-        position: 'relative',
-        pl: isSubItem ? 6.5 : 2.5,
-        ...(currentActive && activeStyle),
-        ...(!currentActive && {
-          '&:hover': {
-            bgcolor: '#f8fafc',
-            color: '#1e293b',
-          },
-        }),
-      }}
-    >
-      {!isSubItem && (
-        <Box component="span" sx={{ width: 24, height: 24, mr: 2, color: currentActive ? '#6366f1' : 'inherit' }}>
-          {item.icon}
-        </Box>
-      )}
-
-      <ListItemText 
-        primary={item.title} 
-        primaryTypographyProps={{ 
-          variant: 'body1',
-          fontWeight: 'inherit',
-          fontSize: isSubItem ? 14 : 15.5 // 글자 크기 확대
-        }} 
-      />
-    </ListItemButton>
-  );
+  return content;
 }
 
 NavItem.propTypes = {
   item: PropTypes.object,
   depth: PropTypes.number,
+  isNavCollapsed: PropTypes.bool,
 };

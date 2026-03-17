@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
 import Card from '@mui/material/Card';
@@ -24,52 +24,97 @@ import Label from 'src/components/label';
 
 export default function AppTasks({ title, subheader, initialTasks, ...other }) {
   const [currentTab, setCurrentTab] = useState('short');
-  const [tasks, setTasks] = useState(initialTasks || {
+  const [tasks, setTasks] = useState({
     short: [],
     mid: [],
     feedback: []
   });
   const [taskInput, setTaskInput] = useState('');
 
+  useEffect(() => {
+    if (initialTasks) {
+      setTasks(initialTasks);
+    }
+  }, [initialTasks]);
+
   const handleChangeTab = (event, newValue) => {
     setCurrentTab(newValue);
     setTaskInput('');
   };
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     if (e.key === 'Enter' && taskInput.trim()) {
-      const newTask = {
-        id: String(Date.now()),
-        name: taskInput,
+      const newTaskData = {
+        type: currentTab,
+        content: taskInput,
         completed: false
       };
-      setTasks({
-        ...tasks,
-        [currentTab]: [newTask, ...tasks[currentTab]]
-      });
-      setTaskInput('');
+
+      try {
+        const response = await fetch('/api/dashboard-task/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newTaskData)
+        });
+        const savedTask = await response.json();
+        
+        const newTask = {
+          id: String(savedTask.id),
+          name: savedTask.content,
+          completed: savedTask.completed
+        };
+        
+        setTasks({
+          ...tasks,
+          [currentTab]: [newTask, ...tasks[currentTab]]
+        });
+        setTaskInput('');
+      } catch (error) {
+        console.error('Failed to add task:', error);
+      }
     }
   };
 
-  const handleToggleTask = (taskId) => {
-    const updatedTabTasks = tasks[currentTab].map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    setTasks({
-      ...tasks,
-      [currentTab]: updatedTabTasks
-    });
+  const handleToggleTask = async (taskId) => {
+    const taskToToggle = tasks[currentTab].find(t => t.id === taskId);
+    if (!taskToToggle) return;
+
+    try {
+      await fetch(`/api/dashboard-task/${taskId}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !taskToToggle.completed })
+      });
+
+      const updatedTabTasks = tasks[currentTab].map(task => 
+        task.id === taskId ? { ...task, completed: !task.completed } : task
+      );
+      setTasks({
+        ...tasks,
+        [currentTab]: updatedTabTasks
+      });
+    } catch (error) {
+      console.error('Failed to toggle task:', error);
+    }
   };
 
-  const handleDeleteTask = (taskId) => {
-    const updatedTabTasks = tasks[currentTab].filter(task => task.id !== taskId);
-    setTasks({
-      ...tasks,
-      [currentTab]: updatedTabTasks
-    });
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await fetch(`/api/dashboard-task/${taskId}/`, {
+        method: 'DELETE'
+      });
+
+      const updatedTabTasks = tasks[currentTab].filter(task => task.id !== taskId);
+      setTasks({
+        ...tasks,
+        [currentTab]: updatedTabTasks
+      });
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+    }
   };
 
-  const activeTasksCount = tasks[currentTab].filter(t => !t.completed).length;
+  const activeTasksCount = (tasks[currentTab] || []).filter(t => !t.completed).length;
 
   return (
     <Card {...other} sx={{ minHeight: 450 }}>
@@ -112,7 +157,7 @@ export default function AppTasks({ title, subheader, initialTasks, ...other }) {
       <Divider sx={{ borderStyle: 'dashed' }} />
 
       <Scrollbar sx={{ maxHeight: 320 }}>
-        {tasks[currentTab].length > 0 ? (
+        {(tasks[currentTab] || []).length > 0 ? (
           tasks[currentTab].map((task) => (
             <TaskItem
               key={task.id}

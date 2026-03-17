@@ -232,6 +232,25 @@ class TeacherFeedback(models.Model):
         return f"{self.student.name} ({self.semester} - {self.week}주차) - {self.teacher}"
 
 
+class DashboardTask(models.Model):
+    TASK_TYPES = (
+        ('short', '단기업무'),
+        ('mid', '중기업무'),
+        ('feedback', '학생피드백'),
+    )
+    type = models.CharField(max_length=20, choices=TASK_TYPES)
+    content = models.CharField(max_length=500)
+    completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.get_type_display()}] {self.content[:20]}"
+
+
 # --- Timetable & Attendance Integration ---
 
 class CourseClass(models.Model):

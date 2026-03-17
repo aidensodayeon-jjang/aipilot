@@ -4,11 +4,50 @@ from django.db.models import Count, Q
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 
-from api.models import Attend, StudentMaster, AcademicSemester, SemesterStatus, CourseMaster
+from api.models import Attend, StudentMaster, AcademicSemester, SemesterStatus, CourseMaster, DashboardTask
+from api.serializers import DashboardTaskSerializer
 
 
 from rest_framework.decorators import authentication_classes, permission_classes
+
+class DashboardTaskView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        tasks = DashboardTask.objects.all()
+        serializer = DashboardTaskSerializer(tasks, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = DashboardTaskSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        try:
+            task = DashboardTask.objects.get(pk=pk)
+        except DashboardTask.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = DashboardTaskSerializer(task, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            task = DashboardTask.objects.get(pk=pk)
+        except DashboardTask.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        task.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class DashboardView(APIView):
     # 인증과 권한을 명시적으로 비움
@@ -44,18 +83,27 @@ class DashboardView(APIView):
             unpaid_amount = semester_status.unpaid_amount
 
         # 2. 상세 통계 집계 (DB 기반)
-        # 2-1. 결제 상태 비중 (CourseMaster 기준)
-        payment_stats = CourseMaster.objects.filter(userid__status='재원생').values('pay').annotate(count=Count('pay'))
+        # 2-1. 결제 상태 비중 (StudentMaster 기준 - 중복 제거)
+        active_students = StudentMaster.objects.filter(status='재원생').prefetch_related('courses')
+        
         payment_data = {
             "labels": ["결제완료", "미결제", "PASS"],
             "series": [0, 0, 0]
         }
-        for item in payment_stats:
-            pay_status = item['pay']
-            count = item['count']
-            if pay_status == '결제완료': payment_data["series"][0] = count
-            elif pay_status == '미결제': payment_data["series"][1] = count
-            elif pay_status == 'PASS': payment_data["series"][2] = count
+        
+        for student in active_students:
+            student_courses = student.courses.all()
+            if not student_courses:
+                continue
+                
+            pay_statuses = [c.pay for c in student_courses]
+            
+            if '미결제' in pay_statuses:
+                payment_data["series"][1] += 1 # 미결제
+            elif '결제완료' in pay_statuses:
+                payment_data["series"][0] += 1 # 결제완료
+            elif 'PASS' in pay_statuses:
+                payment_data["series"][2] += 1 # PASS
 
         # 2-2. 학교별 재원생 Top 8 (StudentMaster 기준)
         school_stats = StudentMaster.objects.filter(status='재원생').exclude(school='').values('school').annotate(count=Count('school')).order_by('-count')[:8]
@@ -124,6 +172,20 @@ class DashboardView(APIView):
             except Exception:
                 pass
 
+        # 3. 태스크 데이터 가져오기
+        tasks = DashboardTask.objects.all()
+        task_data = {
+            "short": [],
+            "mid": [],
+            "feedback": []
+        }
+        for task in tasks:
+            task_data[task.type].append({
+                "id": str(task.id),
+                "name": task.content,
+                "completed": task.completed
+            })
+
         results = {
             "total_user_count": StudentMaster.objects.filter(status='재원생').count(),
             "total_leave_count": StudentMaster.objects.filter(status='휴원생').count(),
@@ -147,5 +209,7 @@ class DashboardView(APIView):
             "school_data": school_data,
             "grade_data": grade_data,
             "unpaid_list": unpaid_list,
+            # 태스크 데이터 추가
+            "tasks": task_data,
         }
         return Response(results)

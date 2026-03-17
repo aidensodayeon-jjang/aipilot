@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 
 from api.views.attend_views import AttendView
 from api.views.course_master_views import CourseMasterView
-from api.views.dashboard_views import DashboardView
+from api.views.dashboard_views import DashboardView, DashboardTaskView
 from api.views.history_views import HistoryView
 from api.views.message_views import MessageView
 from api.views.portfolio import portfolio_student, portfolio_announcement
@@ -43,6 +43,8 @@ urlpatterns = [
     path("user/logout/", TokenBlacklistView.as_view()),
 
     path("dashboard/", DashboardView.as_view()),
+    path("dashboard-task/", DashboardTaskView.as_view()),
+    path("dashboard-task/<int:pk>/", DashboardTaskView.as_view()),
     path("attend/", AttendView.as_view()),
     path("history/", HistoryView.as_view()),
     path("slacklog/", SlackLogView.as_view()),
