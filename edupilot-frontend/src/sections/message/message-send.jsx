@@ -40,9 +40,11 @@ export default function MsgSend() {
       try {
         const response = await fetchWithToken('/api/students/', {}, navigate);
         const data = await response.json();
-        setStudents(data);
+        // 페이지네이션된 데이터일 경우 results를 사용, 아니면 데이터 자체를 사용
+        setStudents(Array.isArray(data) ? data : data.results || []);
       } catch (error) {
         console.error('Failed to load students:', error);
+        setStudents([]);
       } finally {
         setLoading(false);
       }
@@ -52,8 +54,12 @@ export default function MsgSend() {
 
   const addRecipient = (name, phone) => {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    if (cleanPhone.length >= 10 && !recipients.some(r => r.phone === cleanPhone)) {
-      setPhoneNums(prev => [...prev, { name, phone: cleanPhone }]);
+    if (cleanPhone.length >= 10) {
+      setPhoneNums((prev) => {
+        // 중복 체크를 함수형 업데이트 내부에서 수행하여 정확도 향상
+        if (prev.some((r) => r.phone === cleanPhone)) return prev;
+        return [...prev, { name, phone: cleanPhone }];
+      });
       return true;
     }
     return false;
@@ -67,18 +73,6 @@ export default function MsgSend() {
     } else if (value && value.phone_parent) {
       addRecipient(value.name, value.phone_parent);
       setInputValue(''); // 입력창 초기화
-    }
-  };
-
-  const handleKeyDown = (event) => {
-    if (event.key === 'Enter' && inputValue.trim()) {
-      // 숫자인 경우 직접 추가 로직 트리거
-      const cleanInput = inputValue.replace(/[^0-9]/g, '');
-      if (cleanInput.length >= 10) {
-        addRecipient('직접입력', inputValue);
-        setInputValue('');
-        event.preventDefault();
-      }
     }
   };
 
@@ -157,7 +151,14 @@ export default function MsgSend() {
               freeSolo
               loading={loading}
               options={students}
-              getOptionLabel={(option) => typeof option === 'string' ? option : `${option.name} (${option.phone_parent})`}
+              getOptionLabel={(option) => {
+                if (typeof option === 'string') return option;
+                return option?.name ? `${option.name} (${option.phone_parent})` : '';
+              }}
+              isOptionEqualToValue={(option, value) => {
+                if (typeof value === 'string') return option.name === value || option.phone_parent === value;
+                return option.id === value.id;
+              }}
               inputValue={inputValue}
               onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
               onChange={handleAddRecipient}
@@ -166,13 +167,15 @@ export default function MsgSend() {
                   {...params}
                   label="학생 검색 또는 번호 직접 입력"
                   placeholder="이름 또는 010... 입력 후 Enter"
-                  onKeyDown={handleKeyDown}
                   InputProps={{
                     ...params.InputProps,
                     startAdornment: (
-                      <Box sx={{ ml: 1, display: 'flex', color: 'text.disabled' }}>
-                        <Iconify icon="solar:magnifer-bold-duotone" width={20} />
-                      </Box>
+                      <>
+                        <Box sx={{ ml: 1, display: 'flex', color: 'text.disabled' }}>
+                          <Iconify icon="solar:magnifer-bold-duotone" width={20} />
+                        </Box>
+                        {params.InputProps.startAdornment}
+                      </>
                     ),
                   }}
                 />

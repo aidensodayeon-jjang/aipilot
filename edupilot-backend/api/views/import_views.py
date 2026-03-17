@@ -208,7 +208,9 @@ class TimetableImportView(APIView):
             current_day = "SAT" # 기본값 (첫 섹션)
             
             with transaction.atomic():
-                CourseClass.objects.all().delete()
+                # 기존 CourseClass를 삭제하지 않고, 현재 학기의 Enrollment만 초기화하여 
+                # 과거 출석 로그와 CourseClass 간의 연결(Foreign Key)을 보존합니다.
+                Enrollment.objects.filter(course_class__class_code__startswith=current_semester).delete()
 
                 for i, row in enumerate(rows):
                     if not row or not any(row): continue
