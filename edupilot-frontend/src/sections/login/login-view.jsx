@@ -45,10 +45,10 @@ export default function LoginView() {
       .then((response) => response.json().then((data) => ({ response, data })))
       .then(({ response, data }) => {
         if (response.ok) {
-          localStorage.setItem('access', data.token.access);
-          localStorage.setItem('refresh', data.token.refresh);
-          localStorage.setItem('username', data.username);
-          localStorage.setItem('payload', decodePayload(data));
+          sessionStorage.setItem('access', data.token.access);
+          sessionStorage.setItem('refresh', data.token.refresh);
+          sessionStorage.setItem('username', data.username);
+          sessionStorage.setItem('payload', decodePayload(data));
           navigate('/');
         } else if (response.status === 401) {
           setErrors({

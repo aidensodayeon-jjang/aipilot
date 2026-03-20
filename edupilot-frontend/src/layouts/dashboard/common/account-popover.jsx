@@ -45,17 +45,16 @@ export default function AccountPopover() {
   };
 
   const handleLogout = () => {
-    handleClose();
-
     fetch('/api/user/logout/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        refresh: localStorage.getItem('refresh'),
+        refresh: sessionStorage.getItem('refresh') || localStorage.getItem('refresh'),
       }),
-    }).then(() => {
+    }).finally(() => {
+      sessionStorage.clear();
       localStorage.removeItem('access');
       localStorage.removeItem('refresh');
       localStorage.removeItem('username');
@@ -64,6 +63,8 @@ export default function AccountPopover() {
       navigate('/login');
     });
   };
+
+  const username = sessionStorage.getItem('username') || localStorage.getItem('username');
 
   return (
     <>
@@ -81,14 +82,14 @@ export default function AccountPopover() {
       >
         <Avatar
           src={account.photoURL}
-          alt={localStorage.getItem('username')}
+          alt={username}
           sx={{
             width: 36,
             height: 36,
             border: (theme) => `solid 2px ${theme.palette.background.default}`,
           }}
         >
-          {localStorage.getItem('username')}
+          {username}
         </Avatar>
       </IconButton>
 
@@ -109,7 +110,7 @@ export default function AccountPopover() {
       >
         <Box sx={{ my: 1.5, px: 2 }}>
           <Typography variant="subtitle2" noWrap>
-            {localStorage.getItem('username')}
+            {username}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
             {account.email}

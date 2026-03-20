@@ -1,6 +1,6 @@
 export async function fetchWithToken(url, options = {}, navigate) {
-  const getAccessToken = () => localStorage.getItem('access');
-  const getRefreshToken = () => localStorage.getItem('refresh');
+  const getAccessToken = () => sessionStorage.getItem('access') || localStorage.getItem('access');
+  const getRefreshToken = () => sessionStorage.getItem('refresh') || localStorage.getItem('refresh');
 
   const _fetch = (token) =>
     fetch(url, {
@@ -22,6 +22,7 @@ export async function fetchWithToken(url, options = {}, navigate) {
 
     if (refreshResponse.ok) {
       const { access } = await refreshResponse.json();
+      sessionStorage.setItem('access', access);
       localStorage.setItem('access', access);
 
       response = await _fetch(access);
@@ -29,6 +30,7 @@ export async function fetchWithToken(url, options = {}, navigate) {
   }
 
   if (response.status === 401) {
+    sessionStorage.clear();
     localStorage.removeItem('access');
     localStorage.removeItem('refresh');
     localStorage.removeItem('username');
