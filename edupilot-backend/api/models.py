@@ -309,6 +309,20 @@ class AttendanceLog(models.Model):
     def __str__(self):
         return f"{self.student.name if self.student else 'Unknown'} - {self.status} ({self.check_in_time})"
 
+class Notification(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    avatar = models.CharField(max_length=255, null=True, blank=True)
+    type = models.CharField(max_length=50, default='attendance')
+    is_unread = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.created_at}"
+
 class MessageLog(models.Model):
     student = models.ForeignKey(StudentMaster, on_delete=models.SET_NULL, null=True, blank=True)
     sender = models.CharField(max_length=20)
@@ -322,3 +336,12 @@ class MessageLog(models.Model):
 
     def __str__(self):
         return f"{self.receiver} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+class MessageTemplate(models.Model):
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title

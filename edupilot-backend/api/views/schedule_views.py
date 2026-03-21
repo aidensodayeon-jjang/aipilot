@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from datetime import datetime
-from ..models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog, SemesterStatus
+from ..models import StudentMaster, CourseClass, Enrollment, AttendanceLog, MessageLog, SemesterStatus, Notification
 from django.db.models import Prefetch, Q
 from api.utils.message import send_one, send_slack_message
 from api.utils.config import callId
@@ -109,6 +109,17 @@ class AttendanceLogView(APIView):
                 }
             )
 
+            # ✅ 알림 생성 추가
+            try:
+                status_kor = "출석" if status_val == 'present' else "결석"
+                Notification.objects.create(
+                    title=f"{student.name} {status_kor}",
+                    description=f"{course_class.subject_name if course_class else '자습/방문'} ({status_kor})",
+                    type='attendance'
+                )
+            except Exception as e:
+                print(f"DEBUG: Notification create error: {e}")
+
             # ✅ 슬랙 알림 추가 (수동 처리)
             try:
                 status_kor = "출석" if status_val == 'present' else "결석"
@@ -193,6 +204,16 @@ class KioskCheckInView(APIView):
                 check_in_time__range=(start_dt, end_dt),
                 defaults={'check_in_time': now, 'method': 'Kiosk', 'status': 'present'}
             )
+
+            # ✅ 알림 생성 추가
+            try:
+                Notification.objects.create(
+                    title=f"{student.name} 출석 (키오스크)",
+                    description=f"{class_name} 수업 등원",
+                    type='attendance'
+                )
+            except Exception as e:
+                print(f"DEBUG: Kiosk Notification error: {e}")
 
             if student.phone_parent:
                 # DB에서 발신번호(call_id) 동적 로드

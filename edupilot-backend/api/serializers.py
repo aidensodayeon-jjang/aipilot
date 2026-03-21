@@ -12,6 +12,8 @@ from api.models import (
     TeacherFeedback,
     Announcement,
     DashboardTask,
+    Notification,
+    MessageTemplate,
 )
 
 
@@ -124,4 +126,16 @@ class DashboardTaskSerializer(serializers.ModelSerializer):
 class AnnouncementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Announcement
+        fields = '__all__'
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
+
+
+class MessageTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageTemplate
         fields = '__all__'

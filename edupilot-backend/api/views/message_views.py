@@ -2,10 +2,61 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
 from api.utils.config import callId
 from api.utils.message import send_many
-from api.models import MessageLog, StudentMaster, SemesterStatus
+from api.models import MessageLog, StudentMaster, SemesterStatus, MessageTemplate
+from api.serializers import MessageTemplateSerializer
+
+
+class MessageTemplateView(APIView):
+    permission_classes = [IsAdminUser]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        pk = request.query_params.get('id')
+        if pk:
+            try:
+                template = MessageTemplate.objects.get(id=pk)
+                serializer = MessageTemplateSerializer(template)
+                return Response(serializer.data)
+            except MessageTemplate.DoesNotExist:
+                return Response({"error": "Template not found"}, status=404)
+
+        templates = MessageTemplate.objects.all().order_by('-updated_at')
+        serializer = MessageTemplateSerializer(templates, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = MessageTemplateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+    def put(self, request):
+        pk = request.data.get('id')
+        try:
+            template = MessageTemplate.objects.get(id=pk)
+        except MessageTemplate.DoesNotExist:
+            return Response({"error": "Template not found"}, status=404)
+
+        serializer = MessageTemplateSerializer(template, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request):
+        pk = request.query_params.get('id')
+        if not pk:
+            return Response({"error": "ID is required"}, status=400)
+
+        try:
+            template = MessageTemplate.objects.get(id=pk)
+            template.delete()
+            return Response(status=204)
+        except MessageTemplate.DoesNotExist:
+            return Response({"error": "Template not found"}, status=404)
 
 
 class MessageView(APIView):

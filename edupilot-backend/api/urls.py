@@ -7,7 +7,7 @@ from api.views.attend_views import AttendView
 from api.views.course_master_views import CourseMasterView
 from api.views.dashboard_views import DashboardView, DashboardTaskView
 from api.views.history_views import HistoryView
-from api.views.message_views import MessageView
+from api.views.message_views import MessageView, MessageTemplateView
 from api.views.portfolio import portfolio_student, portfolio_announcement
 from api.views.slack_views import SlackLogView, SyncSlackView
 from api.views.student_course_views import StudentCourseView
@@ -21,6 +21,7 @@ from api.views.schedule_views import ScheduleStructureView, AttendanceLogView, K
 from api.views.import_views import StudentImportView, TimetableImportView
 from api.views.semester_views import AcademicSemesterView
 from api.views.announcement_views import AnnouncementViewSet
+from api.views.notification_views import NotificationView
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -45,6 +46,7 @@ urlpatterns = [
     path("dashboard/", DashboardView.as_view()),
     path("dashboard-task/", DashboardTaskView.as_view()),
     path("dashboard-task/<int:pk>/", DashboardTaskView.as_view()),
+    path("notifications/", NotificationView.as_view()),
     path("attend/", AttendView.as_view()),
     path("history/", HistoryView.as_view()),
     path("slacklog/", SlackLogView.as_view()),
@@ -67,6 +69,7 @@ urlpatterns = [
 
 
     path("message/", MessageView.as_view()),
+    path("message/templates/", MessageTemplateView.as_view()),
 
     path("portfolio/student/", portfolio_student),
     path("portfolio/announcement/", portfolio_announcement),

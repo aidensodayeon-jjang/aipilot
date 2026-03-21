@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
@@ -9,23 +10,23 @@ import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 
-import { account } from 'src/_mock/account';
-import { useNavigate } from 'react-router-dom';
-
 // ----------------------------------------------------------------------
 
 const MENU_OPTIONS = [
   {
     label: 'Home',
     icon: 'eva:home-fill',
+    linkTo: '/',
   },
   {
     label: 'Profile',
     icon: 'eva:person-fill',
+    linkTo: '/user',
   },
   {
     label: 'Settings',
     icon: 'eva:settings-2-fill',
+    linkTo: '#',
   },
 ];
 
@@ -33,8 +34,9 @@ const MENU_OPTIONS = [
 
 export default function AccountPopover() {
   const [open, setOpen] = useState(null);
-
   const navigate = useNavigate();
+
+  const username = sessionStorage.getItem('username') || localStorage.getItem('username') || 'Guest';
 
   const handleOpen = (event) => {
     setOpen(event.currentTarget);
@@ -44,27 +46,34 @@ export default function AccountPopover() {
     setOpen(null);
   };
 
-  const handleLogout = () => {
-    fetch('/api/user/logout/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        refresh: sessionStorage.getItem('refresh') || localStorage.getItem('refresh'),
-      }),
-    }).finally(() => {
+  const handleLogout = async () => {
+    try {
+      const refresh = sessionStorage.getItem('refresh') || localStorage.getItem('refresh');
+      if (refresh) {
+        await fetch('/api/user/logout/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh }),
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
       sessionStorage.clear();
-      localStorage.removeItem('access');
-      localStorage.removeItem('refresh');
-      localStorage.removeItem('username');
-      localStorage.removeItem('payload');
-
-      navigate('/login');
-    });
+      localStorage.clear();
+      handleClose();
+      navigate('/login', { replace: true });
+    }
   };
 
-  const username = sessionStorage.getItem('username') || localStorage.getItem('username');
+  const handleMenuItemClick = (linkTo) => {
+    handleClose();
+    if (linkTo !== '#') {
+      navigate(linkTo);
+    }
+  };
 
   return (
     <>
@@ -81,15 +90,15 @@ export default function AccountPopover() {
         }}
       >
         <Avatar
-          src={account.photoURL}
           alt={username}
           sx={{
             width: 36,
             height: 36,
             border: (theme) => `solid 2px ${theme.palette.background.default}`,
+            bgcolor: 'primary.main',
           }}
         >
-          {username}
+          {username.charAt(0).toUpperCase()}
         </Avatar>
       </IconButton>
 
@@ -113,14 +122,14 @@ export default function AccountPopover() {
             {username}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
-            {account.email}
+            관리자 계정
           </Typography>
         </Box>
 
         <Divider sx={{ borderStyle: 'dashed' }} />
 
         {MENU_OPTIONS.map((option) => (
-          <MenuItem key={option.label} onClick={handleClose}>
+          <MenuItem key={option.label} onClick={() => handleMenuItemClick(option.linkTo)}>
             {option.label}
           </MenuItem>
         ))}
@@ -133,7 +142,7 @@ export default function AccountPopover() {
           onClick={handleLogout}
           sx={{ typography: 'body2', color: 'error.main', py: 1.5 }}
         >
-          Logout
+          로그아웃
         </MenuItem>
       </Popover>
     </>

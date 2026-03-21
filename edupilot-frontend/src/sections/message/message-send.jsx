@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Card from '@mui/material/Card';
@@ -12,8 +12,13 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import Popover from '@mui/material/Popover';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 import { alpha } from '@mui/material/styles';
 import CircularProgress from '@mui/material/CircularProgress';
+import IconButton from '@mui/material/IconButton';
 
 import Iconify from 'src/components/iconify';
 import { fetchWithToken } from '../../utils/auth/fetch-with-token';
@@ -24,6 +29,7 @@ export default function MsgSend() {
   const [content, setContent] = useState('');
   const [recipients, setPhoneNums] = useState([]);
   const [students, setStudents] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState({ type: '', message: '' });
@@ -31,8 +37,24 @@ export default function MsgSend() {
   const [inputValue, setInputValue] = useState(''); // 검색창 입력값 제어
   const [bulkInput, setBulkInput] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
+  
+  // 템플릿 관리 관련 상태
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState({ title: '', content: '' });
 
   const navigate = useNavigate();
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const response = await fetchWithToken('/api/message/templates/', {}, navigate);
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data);
+      }
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const loadStudents = async () => {
@@ -40,7 +62,6 @@ export default function MsgSend() {
       try {
         const response = await fetchWithToken('/api/students/', {}, navigate);
         const data = await response.json();
-        // 페이지네이션된 데이터일 경우 results를 사용, 아니면 데이터 자체를 사용
         setStudents(Array.isArray(data) ? data : data.results || []);
       } catch (error) {
         console.error('Failed to load students:', error);
@@ -50,13 +71,13 @@ export default function MsgSend() {
       }
     };
     loadStudents();
-  }, [navigate]);
+    loadTemplates();
+  }, [navigate, loadTemplates]);
 
   const addRecipient = (name, phone) => {
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     if (cleanPhone.length >= 10) {
       setPhoneNums((prev) => {
-        // 중복 체크를 함수형 업데이트 내부에서 수행하여 정확도 향상
         if (prev.some((r) => r.phone === cleanPhone)) return prev;
         return [...prev, { name, phone: cleanPhone }];
       });
@@ -68,11 +89,11 @@ export default function MsgSend() {
   const handleAddRecipient = (event, value) => {
     if (typeof value === 'string' && value.trim()) {
       if (addRecipient('직접입력', value)) {
-        setInputValue(''); // 입력창 초기화
+        setInputValue('');
       }
     } else if (value && value.phone_parent) {
       addRecipient(value.name, value.phone_parent);
-      setInputValue(''); // 입력창 초기화
+      setInputValue('');
     }
   };
 
@@ -89,14 +110,13 @@ export default function MsgSend() {
 
   const handleSend = async () => {
     const sender = localStorage.getItem('SOLAPI_CALL_ID') || '';
-    
     setSending(true);
     setStatus({ type: '', message: '' });
 
     const payload = {
       content,
       phoneNums: recipients.map(r => r.phone),
-      sender, // 비어있으면 백엔드 config.ini의 call_id 사용
+      sender,
     };
 
     try {
@@ -120,6 +140,37 @@ export default function MsgSend() {
     }
   };
 
+  const handleSaveTemplate = async () => {
+    if (!newTemplate.title || !newTemplate.content) return;
+    try {
+      const response = await fetchWithToken('/api/message/templates/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTemplate),
+      }, navigate);
+      if (response.ok) {
+        setTemplateDialogOpen(false);
+        setNewTemplate({ title: '', content: '' });
+        loadTemplates();
+      }
+    } catch (error) {
+      console.error('Failed to save template:', error);
+    }
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    try {
+      const response = await fetchWithToken(`/api/message/templates/?id=${id}`, {
+        method: 'DELETE',
+      }, navigate);
+      if (response.ok) {
+        loadTemplates();
+      }
+    } catch (error) {
+      console.error('Failed to delete template:', error);
+    }
+  };
+
   return (
     <Box sx={{ mt: 2 }}>
       {status.message && (
@@ -130,7 +181,7 @@ export default function MsgSend() {
 
       <Grid container spacing={3}>
         <Grid xs={12} md={5}>
-          <Card sx={{ p: 3, height: 550, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+          <Card sx={{ p: 3, height: 600, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
               <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Iconify icon="solar:users-group-two-rounded-bold-duotone" width={24} color="#6366f1" />
@@ -154,10 +205,6 @@ export default function MsgSend() {
               getOptionLabel={(option) => {
                 if (typeof option === 'string') return option;
                 return option?.name ? `${option.name} (${option.phone_parent})` : '';
-              }}
-              isOptionEqualToValue={(option, value) => {
-                if (typeof value === 'string') return option.name === value || option.phone_parent === value;
-                return option.id === value.id;
               }}
               inputValue={inputValue}
               onInputChange={(event, newInputValue) => setInputValue(newInputValue)}
@@ -214,16 +261,39 @@ export default function MsgSend() {
         </Grid>
 
         <Grid xs={12} md={7}>
-          <Card sx={{ p: 3, height: 550, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Iconify icon="solar:pen-new-square-bold-duotone" width={24} color="#6366f1" />
-              메시지 작성
-            </Typography>
+          <Card sx={{ p: 3, height: 600, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Iconify icon="solar:pen-new-square-bold-duotone" width={24} color="#6366f1" />
+                메시지 작성
+              </Typography>
+              
+              <Stack direction="row" spacing={1}>
+                <Autocomplete
+                  size="small"
+                  options={templates}
+                  getOptionLabel={(option) => option.title}
+                  sx={{ width: 200 }}
+                  onChange={(e, value) => {
+                    if (value) setContent(value.content);
+                  }}
+                  renderInput={(params) => <TextField {...params} label="템플릿 선택" />}
+                />
+                <Button 
+                  variant="soft" 
+                  size="small" 
+                  startIcon={<Iconify icon="solar:settings-bold-duotone" />}
+                  onClick={() => setTemplateDialogOpen(true)}
+                >
+                  관리
+                </Button>
+              </Stack>
+            </Stack>
 
             <TextField
               fullWidth
               multiline
-              rows={14}
+              rows={15}
               placeholder="보낼 내용을 입력하세요..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -247,6 +317,7 @@ export default function MsgSend() {
         </Grid>
       </Grid>
 
+      {/* 대량 추가 팝업 */}
       <Popover
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
@@ -270,11 +341,59 @@ export default function MsgSend() {
         </Button>
       </Popover>
 
+      {/* 템플릿 관리 다이얼로그 */}
+      <Dialog open={templateDialogOpen} onClose={() => setTemplateDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>메시지 템플릿 관리</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>새 템플릿 추가</Typography>
+            <TextField
+              fullWidth
+              label="템플릿 제목"
+              size="small"
+              value={newTemplate.title}
+              onChange={(e) => setNewTemplate({ ...newTemplate, title: e.target.value })}
+              sx={{ mb: 1 }}
+            />
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="내용"
+              value={newTemplate.content}
+              onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+              sx={{ mb: 1 }}
+            />
+            <Button variant="contained" fullWidth onClick={handleSaveTemplate} disabled={!newTemplate.title || !newTemplate.content}>
+              저장하기
+            </Button>
+          </Box>
+          
+          <Typography variant="subtitle2" gutterBottom>기존 템플릿 목록</Typography>
+          <Stack spacing={1}>
+            {templates.map((t) => (
+              <Card key={t.id} variant="outlined" sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                  <Typography variant="subtitle2">{t.title}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{t.content}</Typography>
+                </Box>
+                <IconButton color="error" size="small" onClick={() => handleDeleteTemplate(t.id)}>
+                  <Iconify icon="solar:trash-bin-trash-bold-duotone" />
+                </IconButton>
+              </Card>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTemplateDialogOpen(false)}>닫기</Button>
+        </DialogActions>
+      </Dialog>
+
       <Box sx={{ mt: 3, p: 2, bgcolor: alpha('#6366f1', 0.05), borderRadius: 1.5 }}>
         <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 700, display: 'block', mb: 0.5 }}>💡 안내</Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
           • 이름으로 학생을 찾거나, 직접 번호를 입력한 후 Enter를 눌러 수신자를 추가할 수 있습니다.<br />
-          • [대량 추가] 버튼을 눌러 여러 개의 번호를 한꺼번에 복사하여 넣을 수 있습니다.
+          • 템플릿 기능을 통해 자주 사용하는 메시지 내용을 저장하고 불러올 수 있습니다.
         </Typography>
       </Box>
     </Box>
