@@ -43,9 +43,9 @@ class SyncSlackView(APIView):
         oldest_ts = last_log.ts if last_log else "0"
 
         # 2. 슬랙 설정 가져오기
-        # settings에서 직접 가져오거나 없으면 에러
         slack_token = getattr(settings, 'SLACK_BOT_TOKEN', None)
-        channel_id = getattr(settings, 'SLACK_CHANNEL_ID', 'CF2JWA4AC')
+        # 동기화할 채널을 'mokdong_student' (CF2JWA4AC)로 명시적 지정
+        channel_id = 'CF2JWA4AC' 
 
         if not slack_token or "YOUR_SLACK_BOT_TOKEN_HERE" in slack_token:
             return Response({"error": "SLACK_BOT_TOKEN is not configured correctly in secrets.json."}, status=status.HTTP_400_BAD_REQUEST)
