@@ -92,6 +92,14 @@ The frontend is a modern React application based on the "Minimal" admin template
 
 ---
 
+## Git Branching Strategy
+
+*   **Primary Branch**: `master` (This is the production-ready branch containing the latest stable features and configurations).
+*   **Alternative Branch**: `main` (Kept synchronized with `master`).
+*   **Workflow**: Always check out the `master` branch before starting new tasks. Ensure you pull the latest changes from `origin master` to avoid version mismatch.
+
+---
+
 ## Development Conventions
 
 *   **API Communication**: The frontend communicates with the backend via REST API calls. `django-cors-headers` is configured on the backend to allow requests from the frontend's development server.
