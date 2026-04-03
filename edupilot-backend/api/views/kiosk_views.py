@@ -16,17 +16,20 @@ def kiosk_search_students(request):
         return Response({"error": "전화번호 4자리를 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
 
     # phone_parent 필드가 문자열이므로 끝자리가 일치하는 학생들을 찾음
-    # 실제 데이터 형식에 따라 하이픈(-) 제거 처리가 필요할 수도 있음
-    students = StudentMaster.objects.filter(phone_parent__endswith=phone_suffix)
+    # [중요] '재원생' 상태인 학생만 검색하여 중복 노출(미처리 상태 등) 방지
+    students = StudentMaster.objects.filter(status='재원생')
     
     # 검색된 학생 목록 반환
     data = []
     for s in students:
-        data.append({
-            "id": s.id,
-            "name": s.name,
-            "parent_phone": s.phone_parent
-        })
+        # DB에 저장된 전화번호에서 숫자만 추출하여 뒷 4자리 비교
+        normalized_phone = "".join(filter(str.isdigit, s.phone_parent))
+        if normalized_phone.endswith(phone_suffix):
+            data.append({
+                "id": s.id,
+                "name": s.name,
+                "parent_phone": s.phone_parent
+            })
     
     return Response(data)
 

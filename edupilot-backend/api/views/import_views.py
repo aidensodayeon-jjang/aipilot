@@ -96,18 +96,30 @@ class StudentImportView(APIView):
                     
                     if not name: continue
                     
-                    # (이하 중복 체크 및 등록 로직 동일)
+                    # (이하 중복 체크 및 등록 로직 고도화)
                     student = None
                     is_new_student = False
 
-                    if phone_parent:
-                        student = StudentMaster.objects.filter(name=name, phone_parent=phone_parent).first()
+                    # 전화번호 정규화 (숫자만 추출)
+                    def normalize_phone(p):
+                        return re.sub(r'[^\d]', '', p) if p else ''
+
+                    norm_phone_input = normalize_phone(phone_parent)
+
+                    if norm_phone_input:
+                        # 이름으로 먼저 검색 후, 전화번호가 정규화했을 때 일치하는지 확인
+                        potential_students = StudentMaster.objects.filter(name=name)
+                        for ps in potential_students:
+                            if normalize_phone(ps.phone_parent) == norm_phone_input:
+                                student = ps
+                                break
 
                     if not student and school and grade:
                         student = StudentMaster.objects.filter(name=name, school=school, grade=grade).first()
 
                     if student:
                         student.status = '재원생'
+                        # 전화번호 업데이트 (CSV 형식 선호)
                         if phone_parent: student.phone_parent = phone_parent
                         # CSV에 '신규' 표시가 있으면 해당 학기 신규 태그 추가
                         if is_new_in_csv:
@@ -297,10 +309,18 @@ class TimetableImportView(APIView):
                                     target_time = start_time_obj.replace('09:00', '9:00') # 9:00와 09:00 모두 대응
                                     
                                     if start_time_obj in str(cm.time) or target_time in str(cm.time):
-                                        Enrollment.objects.get_or_create(
+                                        # [중복 방지] 동일 요일, 동일 시간에 이미 다른 수업에 등록되어 있는지 확인
+                                        already_enrolled = Enrollment.objects.filter(
                                             student=cm.userid,
-                                            course_class=course_class
-                                        )
+                                            course_class__day_of_week=full_day,
+                                            course_class__start_time=start_time_obj
+                                        ).exists()
+
+                                        if not already_enrolled:
+                                            Enrollment.objects.get_or_create(
+                                                student=cm.userid,
+                                                course_class=course_class
+                                            )
 
                                 success_count += 1
 
