@@ -29,10 +29,43 @@ class AttendView(APIView):
         return Attend.objects.none()
 
     def get(self, request):
-        attend = self.get_queryset(request)
-        serializer = self.serializer_class(attend, many=True)
+        attend_qs = self.get_queryset(request)
+        serializer = self.serializer_class(attend_qs, many=True)
+        data = serializer.data
 
-        return Response(serializer.data)
+        # ✅ 키오스크 출석 로그 추가 (출결/보강 관리 화면 통합)
+        if request.query_params.get('group_by') == 'reserve':
+            from django.utils import timezone
+            from ..models import AttendanceLog, SemesterStatus
+            
+            now = timezone.localtime()
+            # 오늘 날짜의 출석 로그 가져오기
+            today_logs = AttendanceLog.objects.filter(
+                check_in_time__date=now.date()
+            ).select_related('student', 'course_class')
+            
+            # 현재 학기 정보 가져오기
+            current_semester = ""
+            sem_status = SemesterStatus.objects.first()
+            if sem_status:
+                current_semester = sem_status.current_semester
+
+            for log in today_logs:
+                # Attend 모델 형식으로 변환하여 추가
+                data.append({
+                    'id': f"log-{log.id}", # 가상 ID (Frontend에서 구분용)
+                    'name': log.student.name if log.student else "Unknown",
+                    'phone_parent': log.student.phone_parent if log.student else "",
+                    'term': current_semester,
+                    'subject': log.course_class.subject_name if log.course_class else "자습/방문",
+                    'round': "기본",
+                    'status': "출석" if log.status == 'present' else "결석",
+                    'res_date': log.check_in_time.isoformat(),
+                    'memo': f"키오스크 체크인 ({log.check_in_time.strftime('%H:%M')})" if log.method == 'Kiosk' else "수동 기록",
+                    'is_log': True # 출석 로그임을 표시
+                })
+        
+        return Response(data)
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)

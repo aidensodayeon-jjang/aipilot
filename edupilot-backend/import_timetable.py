@@ -22,6 +22,11 @@ DAY_MAP = {
 def import_data(csv_file_path):
     print(f"Starting import from {csv_file_path}...")
     
+    # 기존 데이터 삭제 (중복 방지 및 최신화)
+    print("Clearing existing enrollment and course class data...")
+    Enrollment.objects.all().delete()
+    CourseClass.objects.all().delete()
+    
     with open(csv_file_path, mode='r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         count = 0
