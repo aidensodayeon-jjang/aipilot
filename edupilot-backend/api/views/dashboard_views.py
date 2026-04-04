@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from django.utils import timezone
 from django.db.models import Count, Q
 from rest_framework.permissions import AllowAny
@@ -22,6 +22,15 @@ class DashboardTaskView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        # ✅ 중복 등록 방지 로직 추가
+        task_type = request.data.get('type')
+        content = request.data.get('content')
+        
+        existing_task = DashboardTask.objects.filter(type=task_type, content=content).first()
+        if existing_task:
+            serializer = DashboardTaskSerializer(existing_task)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = DashboardTaskSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -72,15 +81,42 @@ class DashboardView(APIView):
 
         current_week = None
         progress_percent = 0
-        new_student_count = 0
         total_revenue = 0
         unpaid_amount = 0
 
-        # 저장된 신규 인원수 및 총 매출액 가져오기
+        # ✅ 2-5. 신규 등록 학생 데이터 집계 ('비고' 항목에 '신규등록' 포함된 재원생)
+        new_students_list = StudentMaster.objects.filter(
+            Q(status='재원생') & (Q(memo__contains='신규등록') | Q(counsel__contains='신규등록'))
+        )
+        new_student_count = new_students_list.count() # 요약 카드용 숫자
+        
+        # 신규 등록 학생 학년별 그룹화 (초등 저/고학년, 중등부, 기타)
+        elem_low_new = 0
+        elem_high_new = 0
+        middle_new = 0
+        others_new = 0
+        total_new_for_calc = new_student_count or 1
+
+        for s in new_students_list:
+            g = s.grade or ''
+            if any(x in g for x in ['초1', '초2', '초3', '초4']): elem_low_new += 1
+            elif '초5' in g or '초6' in g: elem_high_new += 1
+            elif '중' in g: middle_new += 1
+            else: others_new += 1
+        
+        new_grade_data = [
+            {"label": "초등 저학년 (1-4학년)", "count": elem_low_new, "percent": round((elem_low_new / total_new_for_calc) * 100, 1)},
+            {"label": "초등 고학년 (5-6학년)", "count": elem_high_new, "percent": round((elem_high_new / total_new_for_calc) * 100, 1)},
+            {"label": "중등부 (1-3학년)", "count": middle_new, "percent": round((middle_new / total_new_for_calc) * 100, 1)},
+            {"label": "기타", "count": others_new, "percent": round((others_new / total_new_for_calc) * 100, 1)},
+        ]
+
+        # 저장된 매출액 및 미결제액 가져오기
         if semester_status:
-            new_student_count = semester_status.new_count
             total_revenue = semester_status.total_revenue
             unpaid_amount = semester_status.unpaid_amount
+            if new_student_count == 0:
+                new_student_count = semester_status.new_count
 
         # 2. 상세 통계 집계 (DB 기반)
         # 2-1. 결제 상태 비중 (StudentMaster 기준 - 중복 제거)
@@ -114,6 +150,7 @@ class DashboardView(APIView):
 
         # 2-3. 학년별 구성비 (StudentMaster 기준)
         grade_stats = StudentMaster.objects.filter(status='재원생').values('grade').annotate(count=Count('grade'))
+        elem_low = 0  # 초1-4
         elem_high = 0 # 초5-6
         middle = 0    # 중등
         others = 0    # 기타
@@ -122,20 +159,21 @@ class DashboardView(APIView):
         for item in grade_stats:
             g = item['grade'] or ''
             c = item['count']
-            if '초5' in g or '초6' in g: elem_high += c
+            if any(x in g for x in ['초1', '초2', '초3', '초4']): elem_low += c
+            elif '초5' in g or '초6' in g: elem_high += c
             elif '중' in g: middle += c
             else: others += c
         
         grade_data = [
+            {"label": "초등 저학년 (1-4학년)", "count": elem_low, "percent": round((elem_low / total_students) * 100, 1)},
             {"label": "초등 고학년 (5-6학년)", "count": elem_high, "percent": round((elem_high / total_students) * 100, 1)},
             {"label": "중등부 (1-3학년)", "count": middle, "percent": round((middle / total_students) * 100, 1)},
             {"label": "기타", "count": others, "percent": round((others / total_students) * 100, 1)},
         ]
 
-        # 2-4. 미결제 학생 리스트 (DB 기반) - 학생별 중복 제거
+        # 2-4. 미결제 학생 리스트 (DB 기반) - 원래 로직으로 복구
         unpaid_students_query = CourseMaster.objects.filter(pay='미결제', userid__status='재원생').select_related('userid').order_by('userid', 'id')
         
-        # 학생별로 한 번씩만 리스트에 추가
         seen_students = set()
         unpaid_list = []
         for item in unpaid_students_query:
@@ -172,19 +210,29 @@ class DashboardView(APIView):
             except Exception:
                 pass
 
-        # 3. 태스크 데이터 가져오기
-        tasks = DashboardTask.objects.all()
+        # 3. 태스크 데이터 가져오기 (최신순 정렬 및 요약본 생성)
+        tasks = DashboardTask.objects.all().order_by('-created_at')
         task_data = {
             "short": [],
             "mid": [],
             "feedback": []
         }
+        recent_tasks = []
+        counts = {"short": 0, "mid": 0, "feedback": 0}
+
         for task in tasks:
-            task_data[task.type].append({
+            t_data = {
                 "id": str(task.id),
                 "name": task.content,
-                "completed": task.completed
-            })
+                "completed": task.completed,
+                "type": task.type
+            }
+            task_data[task.type].append(t_data)
+            
+            # 타입별로 완료되지 않은 최근 2건씩 요약 리스트에 추가
+            if not task.completed and counts[task.type] < 2:
+                recent_tasks.append(t_data)
+                counts[task.type] += 1
 
         results = {
             "total_user_count": StudentMaster.objects.filter(status='재원생').count(),
@@ -208,8 +256,10 @@ class DashboardView(APIView):
             "payment_data": payment_data,
             "school_data": school_data,
             "grade_data": grade_data,
+            "new_grade_data": new_grade_data,
             "unpaid_list": unpaid_list,
             # 태스크 데이터 추가
             "tasks": task_data,
+            "recent_tasks": recent_tasks, # 요약 데이터 추가
         }
         return Response(results)

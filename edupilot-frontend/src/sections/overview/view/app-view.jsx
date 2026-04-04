@@ -24,7 +24,7 @@ import NewDashboard from '../new-dashboard/NewDashboard';
 // ----------------------------------------------------------------------
 
 export default function AppView() {
-  const [currentTab, setCurrentTab] = useState('new');
+  const [currentTab, setCurrentTab] = useState('new'); // ✅ 복구
   const [studentData, setStudentData] = useState([]);
   const [totalConsultingCount, setTotalConsultingCount] = useState(0);
   const [totalReservationCount, setTotalReservationCount] = useState(0);
@@ -40,9 +40,11 @@ export default function AppView() {
     payment_data: null,
     school_data: null,
     grade_data: null,
-    unpaid_list: null, // ✅ 추가
+    unpaid_list: null,
+    new_grade_data: null,
   });
   const [dashboardTasks, setDashboardTasks] = useState(null);
+  const [recentTasks, setRecentTasks] = useState([]);
   const [weekInfo, setWeekInfo] = useState('');
   const [dayInfo, setDayInfo] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -50,7 +52,6 @@ export default function AppView() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 새 대시보드용 데이터 로드 (비동기 처리)
     const loadDashboardData = async () => {
       const data = await processData();
       setStudentData(data);
@@ -58,7 +59,6 @@ export default function AppView() {
 
     loadDashboardData();
 
-    // 기존 대시보드용 데이터 로드
     fetch(
       `/api/dashboard/`,
       {
@@ -84,12 +84,14 @@ export default function AppView() {
           payment_data: result.payment_data,
           school_data: result.school_data,
           grade_data: result.grade_data,
-          unpaid_list: result.unpaid_list, // ✅ 추가
+          unpaid_list: result.unpaid_list,
+          new_grade_data: result.new_grade_data,
         });
         setWeekInfo(result.week_info || '');
         setDayInfo(result.day_info || '');
         setProgressPercent(result.progress_percent || 0);
         setDashboardTasks(result.tasks || null);
+        setRecentTasks(result.recent_tasks || []);
       })
       .catch((error) => {
         console.error('Error fetching data:', error);
@@ -127,7 +129,7 @@ export default function AppView() {
           </Box>
         </Box>
 
-        {/* Tab Selection Section */}
+        {/* Tab Selection Section - Restored */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Tabs value={currentTab} onChange={handleChangeTab} sx={{ px: 1 }}>
             <Tab 
@@ -174,6 +176,7 @@ export default function AppView() {
       {currentTab === 'new' ? (
         <NewDashboard
           data={studentData}
+          onTabChange={setCurrentTab}
           apiStats={{
             consultingCount: totalConsultingCount,
             reservationCount: totalReservationCount,
@@ -184,8 +187,10 @@ export default function AppView() {
             unpaidCount: totalUnpaidCount,
             newCount: totalNewCount,
             totalRevenue,
-            unpaidAmount: totalUnpaidAmount, // ✅ 추가
-            dbStats, // ✅ 추가
+            unpaidAmount: totalUnpaidAmount,
+            dbStats,
+            tasks: dashboardTasks,
+            recent_tasks: recentTasks,
           }}
         />
       ) : (

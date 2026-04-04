@@ -42,11 +42,6 @@ const navConfig = [
     path: '/settings',
     icon: icon('ic_setting'),
   },
-  {
-    title: '업무 관리',
-    path: '/login',
-    icon: icon('ic_lock'),
-  },
 ];
 
 export default navConfig;

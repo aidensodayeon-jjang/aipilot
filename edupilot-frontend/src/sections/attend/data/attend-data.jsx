@@ -100,15 +100,15 @@ export default function AttendData({ userData, setUserData }) {
 
   return (
     <Grid item xs={12}>
-      <Card sx={{ maxHeight: 600 }}>
+      <Card>
         <UserTableToolbar
           filterName={filterName}
           onFilterName={(event) => setFilterName(event.target.value)}
         />
 
-        <Scrollbar sx={{ maxHeight: 500 }}>
-          <TableContainer sx={{ maxHeight: 500, overflow: 'unset' }}>
-            <Table sx={{ maxHeight: 600, minWidth: 250 }} size="small">
+        <Scrollbar>
+          <TableContainer sx={{ overflow: 'unset' }}>
+            <Table sx={{ minWidth: 250 }} size="small">
               <UserTableHead
                 order={order}
                 orderBy={orderBy}

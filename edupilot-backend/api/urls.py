@@ -29,7 +29,11 @@ router.register(r'announcements', AnnouncementViewSet)
 
 app_name = "api"
 
+from api.views.kiosk_views import attend_search_v2, kiosk_check_in
+
 urlpatterns = [
+    path("attend/search-v2/", attend_search_v2),
+    path("attend/check-in/", kiosk_check_in),
     path("", include(router.urls)),
     path("semester/", AcademicSemesterView.as_view()),
     path("import/students/", StudentImportView.as_view()),

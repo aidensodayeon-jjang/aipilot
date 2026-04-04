@@ -15,7 +15,7 @@ import Chart, { useChart } from 'src/components/chart';
 
 // ----------------------------------------------------------------------
 
-export default function NewDashboard({ data, apiStats }) {
+export default function NewDashboard({ data, apiStats, onTabChange }) {
   const navigate = useNavigate();
 
   const stats = useMemo(() => {
@@ -33,6 +33,33 @@ export default function NewDashboard({ data, apiStats }) {
       newStudents: apiStats.newCount || newStudents,
     };
   }, [data, apiStats]);
+
+  const newGradeStats = useMemo(() => {
+    if (apiStats.dbStats?.new_grade_data && Array.isArray(apiStats.dbStats.new_grade_data)) {
+      const colors = ['primary', 'info', 'success', 'warning'];
+      return apiStats.dbStats.new_grade_data.map((item, index) => ({
+        ...item,
+        color: colors[index % colors.length]
+      }));
+    }
+    return [];
+  }, [apiStats]);
+
+  const recentTasks = useMemo(() => {
+    if (apiStats.recent_tasks && apiStats.recent_tasks.length > 0) {
+      return apiStats.recent_tasks;
+    }
+    if (!apiStats.tasks) return [];
+    
+    const allTasks = [
+      ...(apiStats.tasks.short || []),
+      ...(apiStats.tasks.mid || []),
+      ...(apiStats.tasks.feedback || []),
+    ];
+    return allTasks
+      .filter((t) => !t.completed)
+      .slice(0, 6);
+  }, [apiStats]);
 
   const paymentStatusData = useMemo(() => {
     if (apiStats.dbStats?.payment_data) {
@@ -96,17 +123,17 @@ export default function NewDashboard({ data, apiStats }) {
   return (
     <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 2 }}>
       <Grid container spacing={3}>
-        {/* Row 1: Core Growth & Operations */}
-        <Grid xs={12} sm={6} md={4}>
+        {/* Row 1: Summary Cards - Optimized for all screens */}
+        <Grid xs={6} sm={4} md={4} lg={2}>
           <SummaryCard 
-            title="이번 달 신규 등록" 
+            title="신규 등록" 
             total={`${apiStats.newCount || 0}명`}
             icon="solar:user-plus-bold-duotone" 
             color="#6366f1" 
             onClick={() => navigate('/students/재원생')}
           />
         </Grid>
-        <Grid xs={12} sm={6} md={4}>
+        <Grid xs={6} sm={4} md={4} lg={2}>
           <SummaryCard 
             title="총 재원생" 
             total={`${apiStats.userCount}명`} 
@@ -115,18 +142,16 @@ export default function NewDashboard({ data, apiStats }) {
             onClick={() => navigate('/students/재원생')}
           />
         </Grid>
-        <Grid xs={12} sm={6} md={4}>
+        <Grid xs={6} sm={4} md={4} lg={2}>
           <SummaryCard 
-            title="신규 상담중" 
+            title="신규 상담" 
             total={`${apiStats.consultingCount}건`} 
             icon="solar:chat-round-dots-bold-duotone" 
             color="#C684FF" 
             onClick={() => navigate('/students/상담중')}
           />
         </Grid>
-
-        {/* Row 2: Financials & Operational Stats */}
-        <Grid xs={12} sm={6} md={4}>
+        <Grid xs={6} sm={4} md={4} lg={2}>
           <SummaryCard 
             title="총 매출액" 
             total={`₩${(apiStats.totalRevenue || stats.totalRevenue).toLocaleString()}`} 
@@ -134,18 +159,18 @@ export default function NewDashboard({ data, apiStats }) {
             color="#10b981" 
           />
         </Grid>
-        <Grid xs={12} sm={6} md={4}>
+        <Grid xs={6} sm={4} md={4} lg={2}>
           <SummaryCard 
-            title="미결제 총액" 
+            title="미결제액" 
             total={`₩${(apiStats.unpaidAmount || stats.unpaidAmount).toLocaleString()}`} 
             icon="solar:bill-list-bold-duotone" 
             color="#f43f5e" 
             onClick={() => navigate('/students/재원생')}
           />
         </Grid>
-        <Grid xs={12} sm={6} md={4}>
+        <Grid xs={6} sm={4} md={4} lg={2}>
           <SummaryCard 
-            title="보강 필요 학생" 
+            title="보강 필요" 
             total={`${apiStats.reservationCount}명`} 
             icon="eva:people-fill" 
             color="#FF5630" 
@@ -153,10 +178,11 @@ export default function NewDashboard({ data, apiStats }) {
           />
         </Grid>
 
-        {/* Main Content Layout */}
-        <Grid xs={12} md={8}>
+        {/* Main Content Layout (Left 8, Right 4) */}
+        <Grid xs={12} lg={8}>
           <Grid container spacing={3}>
-            <Grid xs={12} sm={6}>
+            {/* Chart Row */}
+            <Grid xs={12} md={6}>
               <ChartCard
                 title="결제 상태 비중"
                 chart={{
@@ -171,7 +197,7 @@ export default function NewDashboard({ data, apiStats }) {
                 }}
               />
             </Grid>
-            <Grid xs={12} sm={6}>
+            <Grid xs={12} md={6}>
               <BarChartCard
                 title="학교별 재원생 Top 8"
                 chart={{
@@ -180,6 +206,8 @@ export default function NewDashboard({ data, apiStats }) {
                 }}
               />
             </Grid>
+            
+            {/* Table Row */}
             <Grid xs={12}>
               <UnpaidStatus 
                 data={data} 
@@ -189,10 +217,22 @@ export default function NewDashboard({ data, apiStats }) {
           </Grid>
         </Grid>
 
-        {/* Right Sidebar */}
-        <Grid xs={12} md={4}>
+        {/* Sidebar Layout (Right 4) */}
+        <Grid xs={12} lg={4}>
           <Stack spacing={3}>
-            <GradeAnalysisCard stats={gradeStats} />
+            <RecentTasksCard 
+              tasks={recentTasks} 
+              onManage={() => onTabChange && onTabChange('old')} 
+            />
+            <GradeAnalysisCard 
+              title="신규 등록 학년 분포"
+              stats={newGradeStats} 
+              isNew
+            />
+            <GradeAnalysisCard 
+              title="전체 학년별 구성비"
+              stats={gradeStats} 
+            />
             <InsightsPanel />
           </Stack>
         </Grid>
@@ -203,6 +243,7 @@ export default function NewDashboard({ data, apiStats }) {
 
 NewDashboard.propTypes = {
   data: PropTypes.array,
+  onTabChange: PropTypes.func,
   apiStats: PropTypes.shape({
     consultingCount: PropTypes.number,
     reservationCount: PropTypes.number,
@@ -214,10 +255,13 @@ NewDashboard.propTypes = {
     newCount: PropTypes.number,
     totalRevenue: PropTypes.number,
     unpaidAmount: PropTypes.number,
+    tasks: PropTypes.object,
+    recent_tasks: PropTypes.array,
     dbStats: PropTypes.shape({
       payment_data: PropTypes.object,
       school_data: PropTypes.object,
       grade_data: PropTypes.array,
+      new_grade_data: PropTypes.object,
       unpaid_list: PropTypes.array,
     }),
   }),
@@ -230,40 +274,41 @@ function SummaryCard({ title, total, icon, color, onClick }) {
     <Card 
       onClick={onClick}
       sx={{ 
-        p: 3, 
+        p: 2, 
+        height: '100%',
         borderRadius: '16px', 
         border: '1px solid #f1f5f9', 
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
         cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.2s',
         '&:hover': onClick ? {
           bgcolor: alpha(color, 0.02),
           transform: 'translateY(-2px)',
-          boxShadow: '0 12px 24px -4px rgba(0, 0, 0, 0.12)',
+          boxShadow: '0 8px 16px -4px rgba(0, 0, 0, 0.1)',
           borderColor: alpha(color, 0.2),
         } : {},
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={2.5}>
+      <Stack spacing={1.5} alignItems="center" textAlign="center">
         <Box
           sx={{
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             display: 'flex',
-            borderRadius: '12px',
+            borderRadius: '10px',
             alignItems: 'center',
             justifyContent: 'center',
             bgcolor: alpha(color, 0.1),
             color,
           }}
         >
-          <Iconify icon={icon} width={28} />
+          <Iconify icon={icon} width={24} />
         </Box>
         <Box>
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
             {title}
           </Typography>
-          <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 700, color: '#1e293b' }}>
+          <Typography variant="subtitle1" sx={{ mt: 0.5, fontWeight: 800, color: '#1e293b', whiteSpace: 'nowrap' }}>
             {total}
           </Typography>
         </Box>
@@ -287,11 +332,13 @@ function ChartCard({ title, chart }) {
   });
 
   return (
-    <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-      <Typography variant="h6" sx={{ mb: 3, color: '#1e293b' }}>
+    <Card sx={{ p: 3, height: '100%', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+      <Typography variant="subtitle1" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>
         {title}
       </Typography>
-      <Chart type="donut" series={chart.series} options={chartOptions} height={280} />
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Chart type="donut" series={chart.series} options={chartOptions} height={260} width="100%" />
+      </Box>
     </Card>
   );
 }
@@ -303,8 +350,14 @@ ChartCard.propTypes = {
 
 function BarChartCard({ title, chart }) {
   const chartOptions = useChart({
-    chart: { stacked: false },
-    plotOptions: { bar: { horizontal: true, barHeight: '30%', borderRadius: 4 } },
+    chart: { stacked: false, toolbar: { show: false } },
+    plotOptions: { 
+      bar: { 
+        horizontal: true, 
+        barHeight: '25%', 
+        borderRadius: 4 
+      } 
+    },
     xaxis: { categories: chart.labels },
     grid: { show: true, strokeDashArray: 3, xaxis: { lines: { show: false } } },
     colors: ['#3b82f6'],
@@ -312,11 +365,11 @@ function BarChartCard({ title, chart }) {
   });
 
   return (
-    <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-      <Typography variant="h6" sx={{ mb: 3, color: '#1e293b' }}>
+    <Card sx={{ p: 3, height: '100%', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+      <Typography variant="subtitle1" sx={{ mb: 3, fontWeight: 700, color: '#1e293b' }}>
         {title}
       </Typography>
-      <Chart type="bar" series={chart.series} options={chartOptions} height={280} />
+      <Chart type="bar" series={chart.series} options={chartOptions} height={260} />
     </Card>
   );
 }
@@ -326,38 +379,135 @@ BarChartCard.propTypes = {
   chart: PropTypes.object,
 };
 
-function GradeAnalysisCard({ stats }) {
+function RecentTasksCard({ tasks, onManage }) {
   return (
-    <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-      <Typography variant="h6" sx={{ mb: 3, color: '#1e293b' }}>
-        학년별 구성비
-      </Typography>
-      <Stack spacing={3}>
-        {stats.map((item) => (
-          <Box key={item.label}>
-            <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#475569' }}>
-                {item.label}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                {item.count}명 ({item.percent.toFixed(1)}%)
-              </Typography>
-            </Stack>
-            <LinearProgress
-              variant="determinate"
-              value={item.percent}
-              color={item.color}
-              sx={{ height: 8, borderRadius: 5, bgcolor: '#f1f5f9' }}
-            />
-          </Box>
-        ))}
-      </Stack>
-      <Box sx={{ mt: 3, p: 2, bgcolor: '#f8fafc', borderRadius: 1.5 }}>
-        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 0.5 }}>
-          💡 커리큘럼 제안
+    <Card sx={{ p: 2.5, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#1e293b' }}>
+          주요 업무 현황
         </Typography>
-        <Typography variant="caption" sx={{ color: '#475569' }}>
-          초등 고학년 비중이 높습니다. 중등 연계 심화 과정(파이썬, C언어 기초)을 강화하여 장기 재원을 유도하세요.
+        <Box 
+          onClick={onManage}
+          sx={{ 
+            typography: 'caption', 
+            color: '#6366f1', 
+            fontWeight: 700, 
+            cursor: 'pointer',
+            bgcolor: alpha('#6366f1', 0.08),
+            px: 1,
+            py: 0.5,
+            borderRadius: 1,
+            '&:hover': { bgcolor: alpha('#6366f1', 0.15) }
+          }}
+        >
+          관리
+        </Box>
+      </Stack>
+      <Stack spacing={1.5}>
+        {tasks && tasks.length > 0 ? (
+          tasks.map((task) => {
+            const typeLabel = {
+              short: { text: '단기', color: '#94a3b8' },
+              mid: { text: '중기', color: '#3b82f6' },
+              feedback: { text: '피드백', color: '#C684FF' }
+            }[task.type] || { text: '기타', color: '#94a3b8' };
+
+            return (
+              <Stack key={task.id} direction="row" spacing={1.5} alignItems="flex-start">
+                <Box sx={{ mt: 0.3 }}>
+                  <Iconify 
+                    icon={task.type === 'feedback' ? "solar:chat-round-dots-bold-duotone" : "solar:check-circle-bold-duotone"} 
+                    width={16} 
+                    color={typeLabel.color} 
+                  />
+                </Box>
+                <Box>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.2 }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        px: 0.6, 
+                        py: 0.1, 
+                        borderRadius: 0.5, 
+                        bgcolor: alpha(typeLabel.color, 0.1), 
+                        color: typeLabel.color,
+                        fontWeight: 800,
+                        fontSize: '0.65rem'
+                      }}
+                    >
+                      {typeLabel.text}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500, lineHeight: 1.4 }}>
+                    {task.name}
+                  </Typography>
+                </Box>
+              </Stack>
+            );
+          })
+        ) : (
+          <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 2 }}>
+            진행 중인 업무가 없습니다.
+          </Typography>
+        )}
+      </Stack>
+    </Card>
+  );
+}
+
+RecentTasksCard.propTypes = {
+  tasks: PropTypes.array,
+  onManage: PropTypes.func,
+};
+
+function GradeAnalysisCard({ title, stats, isNew }) {
+  const analysisText = useMemo(() => {
+    if (!stats || stats.length === 0) return "데이터 분석 중입니다...";
+    
+    const topGrade = [...stats].sort((a, b) => b.count - a.count)[0];
+    
+    if (isNew) {
+      if (topGrade.label.includes('초')) {
+        return `${topGrade.label} 비중이 높습니다. 기초 과정 분반을 추천합니다.`;
+      }
+      return `중등부 유입이 활발합니다. 진로 포트폴리오 상담을 강화하세요.`;
+    }
+    
+    return "초등 고학년 비중이 높습니다. 중등 심화 과정을 연계하세요.";
+  }, [stats, isNew]);
+
+  return (
+    <Card sx={{ p: 2.5, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 700, color: '#1e293b' }}>
+        {title}
+      </Typography>
+      <Stack spacing={2}>
+        {stats.length > 0 ? (
+          stats.map((item) => (
+            <Box key={item.label}>
+              <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  {item.count}명 ({item.percent.toFixed(1)}%)
+                </Typography>
+              </Stack>
+              <LinearProgress
+                variant="determinate"
+                value={item.percent}
+                color={item.color}
+                sx={{ height: 6, borderRadius: 3, bgcolor: '#f1f5f9' }}
+              />
+            </Box>
+          ))
+        ) : (
+          <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>데이터 없음</Typography>
+        )}
+      </Stack>
+      <Box sx={{ mt: 2, p: 1.5, bgcolor: '#f8fafc', borderRadius: 1, borderLeft: '3px solid #6366f1' }}>
+        <Typography variant="caption" sx={{ color: '#475569', fontWeight: 500, fontSize: '0.75rem' }}>
+          💡 {analysisText}
         </Typography>
       </Box>
     </Card>
@@ -365,7 +515,9 @@ function GradeAnalysisCard({ stats }) {
 }
 
 GradeAnalysisCard.propTypes = {
+  title: PropTypes.string,
   stats: PropTypes.array,
+  isNew: PropTypes.bool,
 };
 
 function UnpaidStatus({ data, dbList }) {
@@ -374,28 +526,37 @@ function UnpaidStatus({ data, dbList }) {
 
   return (
     <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-      <Typography variant="h6" sx={{ mb: 2, color: '#1e293b' }}>
-        미결제 현황 (총 {totalUnpaidCount}명)
+      <Typography variant="subtitle1" sx={{ mb: 2.5, fontWeight: 700, color: '#1e293b' }}>
+        미결제 현황 <span style={{ color: '#f43f5e', marginLeft: '4px' }}>({totalUnpaidCount})</span>
       </Typography>
-      <Stack spacing={2}>
+      <Stack spacing={1.5}>
         {unpaidStudents.length > 0 ? (
-          unpaidStudents.slice(0, 10).map((student, index) => (
+          unpaidStudents.slice(0, 8).map((student, index) => (
             <Stack 
               key={index} 
               direction="row" 
               alignItems="center" 
               justifyContent="space-between" 
-              sx={{ pb: 1, borderBottom: index !== Math.min(unpaidStudents.length, 10) - 1 ? '1px solid #f1f5f9' : 'none' }}
+              sx={{ 
+                pb: 1.5, 
+                borderBottom: index !== Math.min(unpaidStudents.length, 8) - 1 ? '1px solid #f8fafc' : 'none' 
+              }}
             >
-              <Box>
-                <Typography variant="subtitle2" sx={{ color: '#1e293b' }}>{student.studentName}</Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.school} / {student.grade}</Typography>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="subtitle2" sx={{ color: '#f43f5e', fontWeight: 700 }}>
-                  {student.paymentAmount > 0 ? `₩${student.paymentAmount.toLocaleString()}` : '확인필요'}
+              <Box sx={{ minWidth: 0, flex: 1, mr: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: '#1e293b', fontWeight: 700, truncate: true }}>
+                  {student.studentName}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>{student.course}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                  {student.school} / {student.grade}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mb: 0.5 }}>
+                  {student.course}
+                </Typography>
+                <Label color="error" variant="soft" sx={{ fontSize: '0.65rem', height: 20 }}>
+                  미결제
+                </Label>
               </Box>
             </Stack>
           ))
@@ -416,21 +577,60 @@ UnpaidStatus.propTypes = {
 
 function InsightsPanel() {
   return (
-    <Card sx={{ p: 3, borderRadius: '16px', border: '1px solid #f1f5f9', bgcolor: '#6366f1', color: 'white' }}>
+    <Card sx={{ p: 2.5, borderRadius: '16px', bgcolor: '#1e293b', color: 'white' }}>
       <Stack spacing={2}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Iconify icon="solar:lightbulb-bold" width={24} />
-          <Typography variant="h6">AI Insights</Typography>
+          <Iconify icon="solar:lightbulb-bold" width={20} color="#FFD666" />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>AI 운영 인사이트</Typography>
         </Stack>
-        <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          이번 달 결제율이 지난달 대비 12% 상승했습니다. 미결제 인원 5명에 대한 자동 알림 발송을 추천합니다.
+        <Typography variant="caption" sx={{ opacity: 0.8, lineHeight: 1.5 }}>
+          이번 학기 결제 주기가 지난 학기 대비 3일 단축되었습니다. 장기 미결제자에 대한 집중 관리가 필요합니다.
         </Typography>
-        <Box sx={{ pt: 1 }}>
-          <Box sx={{ px: 2, py: 1, bgcolor: 'rgba(255,255,255,0.2)', borderRadius: 1, cursor: 'pointer', textAlign: 'center', transition: '0.3s', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' } }}>
-            <Typography variant="subtitle2">알림 발송하기</Typography>
-          </Box>
+        <Box 
+          sx={{ 
+            mt: 1,
+            py: 1, 
+            bgcolor: 'rgba(255,255,255,0.1)', 
+            borderRadius: 1, 
+            textAlign: 'center',
+            cursor: 'pointer',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
+          }}
+        >
+          <Typography variant="caption" sx={{ fontWeight: 700 }}>상세 리포트 보기</Typography>
         </Box>
       </Stack>
     </Card>
+  );
+}
+
+// ----------------------------------------------------------------------
+
+function Label({ children, color = 'default', variant = 'soft', sx }) {
+  const themeColor = {
+    error: {
+      soft: { bgcolor: alpha('#f43f5e', 0.16), color: '#f43f5e' }
+    },
+    default: {
+      soft: { bgcolor: alpha('#94a3b8', 0.16), color: '#475569' }
+    }
+  };
+
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        px: 1,
+        borderRadius: 0.75,
+        fontWeight: 700,
+        ...themeColor[color][variant],
+        ...sx
+      }}
+    >
+      {children}
+    </Box>
   );
 }

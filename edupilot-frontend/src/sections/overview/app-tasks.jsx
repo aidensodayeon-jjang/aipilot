@@ -31,6 +31,8 @@ export default function AppTasks({ title, subheader, initialTasks, ...other }) {
   });
   const [taskInput, setTaskInput] = useState('');
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (initialTasks) {
       setTasks(initialTasks);
@@ -43,34 +45,45 @@ export default function AppTasks({ title, subheader, initialTasks, ...other }) {
   };
 
   const handleAddTask = async (e) => {
-    if (e.key === 'Enter' && taskInput.trim()) {
-      const newTaskData = {
-        type: currentTab,
-        content: taskInput,
-        completed: false
-      };
+    if (e.key === 'Enter' && taskInput.trim() && !isSubmitting) {
+      const contentToAdd = taskInput.trim();
+      const typeToAdd = currentTab;
+      
+      setIsSubmitting(true);
+      setTaskInput(''); // 즉시 비우기
 
       try {
         const response = await fetch('/api/dashboard-task/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newTaskData)
+          body: JSON.stringify({
+            type: typeToAdd,
+            content: contentToAdd,
+            completed: false
+          })
         });
         const savedTask = await response.json();
         
+        // 200 OK(이미 존재)인 경우 목록에 추가하지 않음
+        if (response.status === 200) {
+          return;
+        }
+
         const newTask = {
           id: String(savedTask.id),
           name: savedTask.content,
           completed: savedTask.completed
         };
         
-        setTasks({
-          ...tasks,
-          [currentTab]: [newTask, ...tasks[currentTab]]
-        });
-        setTaskInput('');
+        setTasks((prev) => ({
+          ...prev,
+          [typeToAdd]: [newTask, ...prev[typeToAdd]]
+        }));
       } catch (error) {
         console.error('Failed to add task:', error);
+        setTaskInput(contentToAdd); // 에러 시 입력값 복원
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };

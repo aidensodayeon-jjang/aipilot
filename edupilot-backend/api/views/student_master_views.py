@@ -33,7 +33,9 @@ class StudentMasterView(APIView):
 
         if search_query:
             base_queryset = base_queryset.filter(
-                Q(name__icontains=search_query) | Q(phone_parent__icontains=search_query)
+                Q(name__icontains=search_query) | 
+                Q(phone_parent__icontains=search_query) |
+                Q(phone_user__icontains=search_query)
             )
 
         if status_param == 'unprocessed':

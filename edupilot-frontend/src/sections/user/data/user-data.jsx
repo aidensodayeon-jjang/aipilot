@@ -28,17 +28,16 @@ export default function UserData({ setSelected, refreshTrigger }) {
   const [orderBy, setOrderBy] = useState('name');
   const [filterName, setFilterName] = useState('');
   const [page, setPage] = useState(0);
-  const [rowsPerPage] = useState(5); // 한 페이지에 5명씩
+  const [rowsPerPage] = useState(10); // 10명씩 표시
 
   const navigate = useNavigate();
 
-  // 서버에서 데이터 가져오기 (검색어 + 페이지 번호 포함)
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
         search: filterName,
-        page: page + 1, // DRF는 1-based page
+        page: page + 1,
         page_size: rowsPerPage,
       });
 
@@ -60,21 +59,19 @@ export default function UserData({ setSelected, refreshTrigger }) {
     }
   }, [filterName, page, rowsPerPage, navigate]);
 
-  // 검색어 입력 시 0.5초 대기 후 검색 (디바운스)
+  // 검색어 변경 시 페이지 초기화
+  useEffect(() => {
+    setPage(0);
+  }, [filterName]);
+
+  // 데이터 가져오기 (검색어, 페이지, 새로고침 트리거 변경 시)
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchStudents();
-    }, 500);
+    }, 300); // 0.3초 디바운스
 
     return () => clearTimeout(timer);
-  }, [fetchStudents]);
-
-  // 외부 트리거(신규 등록 등) 발생 시 새로고침
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      fetchStudents();
-    }
-  }, [refreshTrigger, fetchStudents]);
+  }, [fetchStudents, refreshTrigger]);
 
   const handleSort = (id) => {
     const isAsc = orderBy === id && order === 'asc';
@@ -108,24 +105,21 @@ export default function UserData({ setSelected, refreshTrigger }) {
 
   return (
     <Grid item xs={12} md={4.5}>
-      <Card sx={{ height: 320, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+      <Card sx={{ height: 520, display: 'flex', flexDirection: 'column', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
         <Box sx={{ px: 2, pt: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>학생 검색</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>학생 목록 (전체)</Typography>
             {loading && <CircularProgress size={16} color="inherit" />}
           </Box>
           <UserTableToolbar
             filterName={filterName}
-            onFilterName={(event) => {
-              setFilterName(event.target.value);
-              setPage(0); // 검색 시 첫 페이지로 리셋
-            }}
+            onFilterName={(event) => setFilterName(event.target.value)}
             sx={{ p: 0, minHeight: 'auto', '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem' } }}
           />
         </Box>
 
         <TableContainer sx={{ flexGrow: 1, overflow: 'auto', px: 1 }}>
-          <Table size="small">
+          <Table size="small" stickyHeader>
             <UserTableHead
               order={order}
               orderBy={orderBy}
@@ -135,7 +129,7 @@ export default function UserData({ setSelected, refreshTrigger }) {
                 { id: 'phone', label: '연락처' },
                 { id: 'status', label: '상태' },
               ]}
-              sx={{ '& th': { py: 0.5, fontSize: '0.7rem', bgcolor: 'transparent' } }}
+              sx={{ '& th': { py: 0.5, fontSize: '0.7rem', bgcolor: 'white' } }}
             />
 
             <TableBody>
@@ -156,13 +150,13 @@ export default function UserData({ setSelected, refreshTrigger }) {
         </TableContainer>
 
         <TablePagination
-          rowsPerPageOptions={[]} // 페이지 크기 고정
+          rowsPerPageOptions={[]}
           component="div"
           count={totalCount}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={(e, p) => setPage(p)}
-          sx={{ borderTop: 'none', '& .MuiTablePagination-toolbar': { minHeight: 32 } }}
+          sx={{ borderTop: '1px solid #f1f5f9', '& .MuiTablePagination-toolbar': { minHeight: 32 } }}
         />
       </Card>
     </Grid>

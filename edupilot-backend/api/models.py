@@ -345,3 +345,16 @@ class MessageTemplate(models.Model):
 
     def __str__(self):
         return self.title
+
+class StudentTier(models.Model):
+    student = models.ForeignKey(StudentMaster, on_delete=models.CASCADE, related_name='tiers')
+    semester = models.CharField(max_length=6)  # 예: '202509'
+    tier = models.CharField(max_length=20, default='Bronze')
+    points = models.IntegerField(default=0)  # ✅ 추가: 누적 포인트
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('student', 'semester')
+
+    def __str__(self):
+        return f"{self.student.name} - {self.semester} ({self.tier})"
